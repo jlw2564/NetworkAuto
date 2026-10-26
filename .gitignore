@@ -1,0 +1,37 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+
+# ===== 虚拟环境 =====
+venv/
+env/
+.venv/
+
+# ===== Playwright 浏览器内核 =====
+ms-playwright/
+
+# ===== IDE =====
+.idea/
+.vscode/
+
+# ===== Vercel 遗留配置 =====
+.vercel/
+.vercelignore
+
+# ===== 生成的输出 / 数据文件 =====
+*.xlsx
+*.xls
+*.csv
+采集结果/
+*.log
+perm_verify_report.txt
+*.tmp
+*.bak
+
+# ===== 系统 =====
+.DS_Store
+Thumbs.db
+Desktop.ini

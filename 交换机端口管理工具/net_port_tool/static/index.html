@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>交换机端口资源管理工具</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<header>
+  <h1>交换机端口资源管理</h1>
+  <span class="ver">网络端口管理 / 终端定位 / 可疑端口</span>
+</header>
+
+<div class="layout">
+  <!-- 左侧：参数与历史 -->
+  <div>
+    <div class="panel">
+      <h2>运行参数</h2>
+
+      <label class="field">
+        <span>交换机清单（switch_table.xlsx）</span>
+        <input type="text" id="switchFile" placeholder="留空使用默认路径" />
+      </label>
+      <div class="row" style="margin-bottom:12px">
+        <button id="btnUploadSwitch">上传交换机清单</button>
+        <input type="file" id="fileSwitch" accept=".xlsx,.xls" hidden />
+      </div>
+
+      <label class="field">
+        <span>终端 IP 表（终端IP表.xlsx）</span>
+        <input type="text" id="terminalFile" placeholder="留空使用默认路径" />
+      </label>
+      <div class="row" style="margin-bottom:12px">
+        <button id="btnUploadTerminal">上传终端 IP 表</button>
+        <input type="file" id="fileTerminal" accept=".xlsx,.xls" hidden />
+      </div>
+
+      <div class="row" style="margin-bottom:12px">
+        <label class="field" style="margin:0">
+          <span>采集并发</span>
+          <input type="number" id="concurrency" value="6" min="1" max="32" />
+        </label>
+        <label class="field" style="margin:0">
+          <span>自动发现未知交换机</span>
+          <select id="discover">
+            <option value="true">开启</option>
+            <option value="false">关闭</option>
+          </select>
+        </label>
+      </div>
+
+      <span class="muted" style="font-size:12px">功能模块</span>
+      <div class="checks" id="sections" style="margin:6px 0 12px"></div>
+
+      <button class="primary full" id="btnRun">开始采集分析</button>
+      <div class="hint" id="runHint">提示：采集期间请勿关闭本页面，可随时查看实时日志。</div>
+    </div>
+
+    <div class="panel">
+      <h2>历史任务 <button id="btnRefreshHistory" style="padding:2px 8px">刷新</button></h2>
+      <div id="history"><div class="muted">暂无记录</div></div>
+    </div>
+  </div>
+
+  <!-- 右侧：进度 / 日志 / 结果 -->
+  <div>
+    <div class="panel">
+      <h2>进度 <span class="badge" id="statusBadge">未开始</span></h2>
+      <div class="progress-outer"><div class="progress-inner" id="progressBar"></div></div>
+      <div class="stage" id="stageText">等待任务开始</div>
+      <div class="stat-grid" id="stats" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel">
+      <h2>实时日志
+        <span>
+          <button id="btnClearLog" style="padding:2px 8px">清屏</button>
+          <button id="btnDownload" style="padding:2px 8px" disabled>下载 Excel</button>
+        </span>
+      </h2>
+      <pre id="log">等待任务开始…</pre>
+    </div>
+
+    <div class="panel">
+      <h2>结果预览</h2>
+      <div class="tabs" id="sheetTabs"></div>
+      <div class="table-wrap" id="tableWrap"><div class="muted" style="padding:12px">任务完成后可在此查看各 Sheet 数据。</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

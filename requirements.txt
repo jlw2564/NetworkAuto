@@ -1,0 +1,7 @@
+netmiko
+pandas
+openpyxl
+xlrd
+fastapi
+uvicorn[standard]
+python-multipart
