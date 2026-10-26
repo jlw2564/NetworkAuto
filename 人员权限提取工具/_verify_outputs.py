@@ -1,4 +1,8 @@
-import os, sys, json, datetime, glob
+import os
+import sys
+import json
+import datetime
+import glob
 import pandas as pd
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -9,8 +13,11 @@ UNMATCHED_PERM_DIR = os.path.join(ROOT, '未匹配权限表')
 PERM_DIR = os.path.join(ROOT, '权限表')
 
 rpt = []
+
+
 def P(s=''):
     rpt.append(str(s))
+
 
 P('== 权限提取结果验证 ==')
 P('时间: ' + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
@@ -27,6 +34,7 @@ for name, p in [('汇总结果xlsx', OUTFILE), ('未匹配人员xlsx', UNMATCHED
     else:
         P(f'{name}: MISSING  path={p}')
 P('')
+
 
 def report_excel(path, tag):
     if not os.path.isfile(path):
@@ -52,8 +60,10 @@ def report_excel(path, tag):
         P(f'  ERR: {type(e).__name__}: {e}')
     P('')
 
+
 report_excel(OUTFILE, '汇总结果')
 report_excel(UNMATCHED_FILE, '未匹配人员单独表')
+
 
 def n_xls(d):
     if not os.path.isdir(d):
@@ -63,6 +73,7 @@ def n_xls(d):
         if name.lower().endswith('.xls'):
             cnt += 1
     return cnt
+
 
 perm_total = 0
 if os.path.isdir(PERM_DIR):

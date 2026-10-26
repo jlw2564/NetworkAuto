@@ -74,7 +74,8 @@ def read_switch_table():
             if nc == norm_col(cand):
                 check_col_actual = col
                 break
-        if check_col_actual: break
+        if check_col_actual:
+            break
     for idx, (_, row) in enumerate(df.iterrows(), 1):
         row = row.to_dict()
         name = pick(row, '设备名称', '名称', 'hostname', 'switch_name')
@@ -118,59 +119,86 @@ def judge_need_check(d):
     # 【manuinfo 回显缺失兜底】：如果 _manuinfo_missing_sn=True（display device manuinfo SSH 回显本身没收到完整 SN 段）
     #   且 型号/硬件/软件 3 项都非未知非空，就跳过 SN=未知 的“解析失败”，不算 need_check。
     missing_sn_ok = (bool(vi.get('_manuinfo_missing_sn'))
-                     and str(vi.get('型号','')).strip() not in ('','未知')
-                     and str(vi.get('硬件版本','')).strip() not in ('','未知')
-                     and str(vi.get('软件版本','')).strip() not in ('','未知'))
-    for k, friendly in [('型号','型号'),('序列号SN','SN'),('硬件版本','硬件'),('软件版本','软件')]:
+                     and str(vi.get('型号', '')).strip() not in ('', '未知')
+                     and str(vi.get('硬件版本', '')).strip() not in ('', '未知')
+                     and str(vi.get('软件版本', '')).strip() not in ('', '未知'))
+    for k, friendly in [('型号', '型号'), ('序列号SN', 'SN'), ('硬件版本', '硬件'), ('软件版本', '软件')]:
         v = str(vi.get(k, '')).strip()
-        if k == '序列号SN' and missing_sn_ok: continue
-        if not v or v == '未知': reasons.append(f'{friendly}解析失败({v})')
+        if k == '序列号SN' and missing_sn_ok:
+            continue
+        if not v or v == '未知':
+            reasons.append(f'{friendly}解析失败({v})')
     try:
         cpu = float(d.get('cpu_pct', 0.0) or 0.0)
-        if cpu >= CPU_ERR: reasons.append(f'CPU过高{cpu:.1f}% ≥ {CPU_ERR:.0f}%')
-        elif cpu >= CPU_WARN: reasons.append(f'CPU告警{cpu:.1f}% ≥ {CPU_WARN:.0f}%')
-    except Exception: pass
+        if cpu >= CPU_ERR:
+            reasons.append(f'CPU过高{cpu:.1f}% ≥ {CPU_ERR:.0f}%')
+        elif cpu >= CPU_WARN:
+            reasons.append(f'CPU告警{cpu:.1f}% ≥ {CPU_WARN:.0f}%')
+    except Exception:
+        pass
     try:
         mem = float(d.get('mem_pct', 0.0) or 0.0)
-        if mem >= MEM_ERR: reasons.append(f'内存过高{mem:.1f}% ≥ {MEM_ERR:.0f}%')
-        elif mem >= MEM_WARN: reasons.append(f'内存告警{mem:.1f}% ≥ {MEM_WARN:.0f}%')
-    except Exception: pass
+        if mem >= MEM_ERR:
+            reasons.append(f'内存过高{mem:.1f}% ≥ {MEM_ERR:.0f}%')
+        elif mem >= MEM_WARN:
+            reasons.append(f'内存告警{mem:.1f}% ≥ {MEM_WARN:.0f}%')
+    except Exception:
+        pass
     thr_w = d.get('温度告警阈值') if isinstance(d.get('温度告警阈值'), dict) else {}
     thr_e = d.get('温度错误阈值') if isinstance(d.get('温度错误阈值'), dict) else {}
     for t in (d.get('temps') or []):
-        tv = None; name = ''
+        tv = None
+        name = ''
         if isinstance(t, dict):
             name = str(t.get('name') or t.get('sensor') or t.get('label') or '')
-            try: tv = float(t.get('value') or 0.0)
-            except Exception: tv = None
+            try:
+                tv = float(t.get('value') or 0.0)
+            except Exception:
+                tv = None
         elif isinstance(t, (tuple, list)) and len(t) >= 2:
-            name = str(t[0] or '');
-            try: tv = float(t[1] or 0.0)
-            except Exception: tv = None
-        if tv is None: continue
+            name = str(t[0] or '')
+            try:
+                tv = float(t[1] or 0.0)
+            except Exception:
+                tv = None
+        if tv is None:
+            continue
         wv = ev = None
-        for cand in [name, name.replace(' ','_'), name.lower(), name.upper()]:
-            if not cand: continue
+        for cand in [name, name.replace(' ', '_'), name.lower(), name.upper()]:
+            if not cand:
+                continue
             if wv is None and cand in thr_w:
-                try: wv = float(thr_w[cand])
-                except Exception: wv = None
+                try:
+                    wv = float(thr_w[cand])
+                except Exception:
+                    wv = None
             if ev is None and cand in thr_e:
-                try: ev = float(thr_e[cand])
-                except Exception: ev = None
-        if wv is None: wv = TEMP_WARN
-        if ev is None: ev = TEMP_ERR
+                try:
+                    ev = float(thr_e[cand])
+                except Exception:
+                    ev = None
+        if wv is None:
+            wv = TEMP_WARN
+        if ev is None:
+            ev = TEMP_ERR
         try:
-            if tv >= ev: reasons.append(f"温度告警({name or '传感器'}={tv:.1f}℃ ≥ Alarm {ev:.0f}℃)")
-            elif tv >= wv: reasons.append(f"温度偏高({name or '传感器'}={tv:.1f}℃ ≥ Warning {wv:.0f}℃)")
+            if tv >= ev:
+                reasons.append(f"温度告警({name or '传感器'}={tv:.1f}℃ ≥ Alarm {ev:.0f}℃)")
+            elif tv >= wv:
+                reasons.append(f"温度偏高({name or '传感器'}={tv:.1f}℃ ≥ Warning {wv:.0f}℃)")
         except Exception:
-            if tv >= TEMP_ERR: reasons.append(f"温度过高{name or '传感器'}={tv:.1f}℃")
-            elif tv >= TEMP_WARN: reasons.append(f"温度偏高{name or '传感器'}={tv:.1f}℃")
+            if tv >= TEMP_ERR:
+                reasons.append(f"温度过高{name or '传感器'}={tv:.1f}℃")
+            elif tv >= TEMP_WARN:
+                reasons.append(f"温度偏高{name or '传感器'}={tv:.1f}℃")
     for p in (d.get('ports') or []):
-        if not isinstance(p, dict): continue
+        if not isinstance(p, dict):
+            continue
         try:
             in_u = float(p.get('bandwidth_in_util_pct', 0.0) or 0.0)
             out_u = float(p.get('bandwidth_out_util_pct', 0.0) or 0.0)
-        except Exception: in_u = out_u = 0.0
+        except Exception:
+            in_u = out_u = 0.0
         name = str(p.get('port') or p.get('interface') or '')
         if in_u >= BANDWIDTH_ERR or out_u >= BANDWIDTH_ERR:
             reasons.append(f'端口{name}带宽过载 入{in_u:.1f}%/出{out_u:.1f}% ≥ {BANDWIDTH_ERR:.0f}%')
@@ -181,13 +209,17 @@ def judge_need_check(d):
         try:
             if rx is not None and str(rx).strip() != '' and rx != 'N/A':
                 rxv = float(rx)
-                if rxv < RX_PWR_MIN or rxv > RX_PWR_MAX: reasons.append(f'端口{name}收光异常 RX={rxv:.2f}dBm(正常[{RX_PWR_MIN:.0f},{RX_PWR_MAX:.0f}])')
-        except Exception: pass
+                if rxv < RX_PWR_MIN or rxv > RX_PWR_MAX:
+                    reasons.append(f'端口{name}收光异常 RX={rxv:.2f}dBm(正常[{RX_PWR_MIN:.0f},{RX_PWR_MAX:.0f}])')
+        except Exception:
+            pass
         try:
             if tx is not None and str(tx).strip() != '' and tx != 'N/A':
                 txv = float(tx)
-                if txv < TX_PWR_MIN or txv > TX_PWR_MAX: reasons.append(f'端口{name}发光异常 TX={txv:.2f}dBm(正常[{TX_PWR_MIN:.0f},{TX_PWR_MAX:.0f}])')
-        except Exception: pass
+                if txv < TX_PWR_MIN or txv > TX_PWR_MAX:
+                    reasons.append(f'端口{name}发光异常 TX={txv:.2f}dBm(正常[{TX_PWR_MIN:.0f},{TX_PWR_MAX:.0f}])')
+        except Exception:
+            pass
         if p.get('transceiver_status') and str(p['transceiver_status']).strip() not in ('正常', '', 'OK', 'ok'):
             reasons.append(f'端口{name}光模块{p["transceiver_status"]}')
         if p.get('counter_overflow') or str(p.get('errors', '')).strip() == 'Overflow':
@@ -196,7 +228,8 @@ def judge_need_check(d):
             reasons.append(f'端口{name}计数错误{p["errors"]}')
     for e in (d.get('errors') or []):
         es = str(e).strip()
-        if es and es not in ('正常', '', '无'): reasons.append(es[:120])
+        if es and es not in ('正常', '', '无'):
+            reasons.append(es[:120])
     need = len(reasons) > 0
     return need, reasons
 
@@ -210,9 +243,11 @@ def write_switch_table_check_flag(all_data):
     if not SWITCH_TABLE_FILE.exists():
         log(f'[标记列回写] 跳过：{SWITCH_TABLE_FILE} 不存在')
         return
-    backup = SWITCH_TABLE_FILE.with_name(SWITCH_TABLE_FILE.stem + '_bak_' + time.strftime('%Y%m%d_%H%M%S') + SWITCH_TABLE_FILE.suffix)
+    backup = SWITCH_TABLE_FILE.with_name(SWITCH_TABLE_FILE.stem + '_bak_' +
+                                         time.strftime('%Y%m%d_%H%M%S') + SWITCH_TABLE_FILE.suffix)
     try:
-        import shutil; shutil.copy2(str(SWITCH_TABLE_FILE), str(backup))
+        import shutil
+        shutil.copy2(str(SWITCH_TABLE_FILE), str(backup))
     except Exception as e:
         log(f'[标记列回写] 备份失败（继续写原文件）：{e}')
         backup = None
@@ -226,14 +261,16 @@ def write_switch_table_check_flag(all_data):
     headers = {}
     for c in range(1, max_col + 1):
         v = ws.cell(row=1, column=c).value
-        if v is None: continue
+        if v is None:
+            continue
         headers[norm_col(str(v))] = c
-    ip_cols = [headers[norm_col(x)] for x in ['IP地址','管理IP','管理地址','IP','Host','主机'] if norm_col(x) in headers]
-    name_cols = [headers[norm_col(x)] for x in ['设备名称','名称','hostname','switch_name'] if norm_col(x) in headers]
+    ip_cols = [headers[norm_col(x)] for x in ['IP地址', '管理IP', '管理地址', 'IP', 'Host', '主机'] if norm_col(x) in headers]
+    name_cols = [headers[norm_col(x)] for x in ['设备名称', '名称', 'hostname', 'switch_name'] if norm_col(x) in headers]
     check_col = None
-    for cand in ['是否需要检查','需检查','需要检查','是否采集','需要采集','是否运行','check','need_check','run']:
+    for cand in ['是否需要检查', '需检查', '需要检查', '是否采集', '需要采集', '是否运行', 'check', 'need_check', 'run']:
         if norm_col(cand) in headers:
-            check_col = headers[norm_col(cand)]; break
+            check_col = headers[norm_col(cand)]
+            break
     if check_col is None:
         check_col = max_col + 1
         ws.cell(row=1, column=check_col, value='是否需要检查')
@@ -245,8 +282,10 @@ def write_switch_table_check_flag(all_data):
         need, reasons = judge_need_check(d)
         val = '是' if need else '否'
         entry = {'val': val, 'need': need, 'reasons': reasons, 'name': n, 'host': h}
-        if h: data_by_host[h] = entry
-        if n: data_by_name[n] = entry
+        if h:
+            data_by_host[h] = entry
+        if n:
+            data_by_name[n] = entry
     written = 0
     matched_rows = 0
     for r in range(2, (ws.max_row or 1) + 1):
@@ -255,11 +294,13 @@ def write_switch_table_check_flag(all_data):
         entry = None
         for hv in host_vals:
             if hv and hv in data_by_host:
-                entry = data_by_host[hv]; break
+                entry = data_by_host[hv]
+                break
         if not entry:
             for nv in name_vals:
                 if nv and nv in data_by_name:
-                    entry = data_by_name[nv]; break
+                    entry = data_by_name[nv]
+                    break
         if not entry:
             continue
         matched_rows += 1
@@ -289,9 +330,11 @@ def write_switch_table_check_flag(all_data):
         log(f'[标记列回写] 保存 xlsx 失败（可能文件正被 Excel 打开，请关闭后下次运行自动回写）：{e}')
         if backup:
             try:
-                import shutil; shutil.copy2(str(backup), str(SWITCH_TABLE_FILE))
+                import shutil
+                shutil.copy2(str(backup), str(SWITCH_TABLE_FILE))
                 log(f'[标记列回写] 已从备份恢复原文件')
-            except Exception: pass
+            except Exception:
+                pass
         return
     log(f'[标记列回写] 完成：匹配 {matched_rows} 行，变更 {written} 行；备份文件：{backup.name if backup else "(未备份)"})')
     if backup:
@@ -303,7 +346,8 @@ def dump_all_data_cache(all_data):
         import json
         safe = []
         for d in all_data:
-            if not isinstance(d, dict): continue
+            if not isinstance(d, dict):
+                continue
             item = {}
             for k, v in d.items():
                 if k in ('config_txt', '_raw_version', '_raw_manuinfo'):
@@ -335,9 +379,11 @@ def load_all_data_cache():
         with open(str(CACHE_FILE), 'r', encoding='utf-8') as f:
             arr = json.load(f)
         for d in arr:
-            if not isinstance(d, dict): continue
+            if not isinstance(d, dict):
+                continue
             h = str(d.get('host', '') or '').strip()
-            if h: out[h] = d
+            if h:
+                out[h] = d
         log(f'[缓存] 已加载采集数据缓存（{len(out)} 台），将作为旧数据合并基础。')
         return out
     except Exception as e:
@@ -364,22 +410,24 @@ def load_health_from_excel():
         df1 = _pd.read_excel(LEDGER_FILE, sheet_name=0, dtype=str).fillna('')
         col_map1 = _map_col(df1.columns)
         for _, row in df1.iterrows():
-            h = str(row.get(col_map1.get('管理ip','管理IP'), '')).strip() or str(row.get(col_map1.get('ip地址','IP地址'), '')).strip()
-            if not h: continue
-            is_core_val = str(row.get(col_map1.get('是否核心交换机','是否核心交换机'), '')).strip()
+            h = str(row.get(col_map1.get('管理ip', '管理IP'), '')).strip() or str(
+                row.get(col_map1.get('ip地址', 'IP地址'), '')).strip()
+            if not h:
+                continue
+            is_core_val = str(row.get(col_map1.get('是否核心交换机', '是否核心交换机'), '')).strip()
             out[h] = {
-                'name': str(row.get(col_map1.get('设备名称','设备名称'), '')).strip(),
+                'name': str(row.get(col_map1.get('设备名称', '设备名称'), '')).strip(),
                 'host': h,
                 'is_core': ('核心' in is_core_val) or ('是' in is_core_val) or ('core' in is_core_val.lower()),
-                '登录状态': str(row.get(col_map1.get('登录状态','登录状态'), '失败')).strip() or '失败',
-                '采集时间': str(row.get(col_map1.get('采集时间','采集时间'), '')).strip(),
+                '登录状态': str(row.get(col_map1.get('登录状态', '登录状态'), '失败')).strip() or '失败',
+                '采集时间': str(row.get(col_map1.get('采集时间', '采集时间'), '')).strip(),
                 'version_info': {
-                    '型号': str(row.get(col_map1.get('型号','型号'), '')).strip() or '未知',
-                    '序列号SN': str(row.get(col_map1.get('序列号sn','序列号SN'), '')).strip() or '未知',
-                    '硬件版本': str(row.get(col_map1.get('硬件版本','硬件版本'), '')).strip() or '未知',
-                    '软件版本': str(row.get(col_map1.get('软件版本','软件版本'), '')).strip() or '未知',
+                    '型号': str(row.get(col_map1.get('型号', '型号'), '')).strip() or '未知',
+                    '序列号SN': str(row.get(col_map1.get('序列号sn', '序列号SN'), '')).strip() or '未知',
+                    '硬件版本': str(row.get(col_map1.get('硬件版本', '硬件版本'), '')).strip() or '未知',
+                    '软件版本': str(row.get(col_map1.get('软件版本', '软件版本'), '')).strip() or '未知',
                 },
-                '备注': str(row.get(col_map1.get('备注','备注'), '')).strip(),
+                '备注': str(row.get(col_map1.get('备注', '备注'), '')).strip(),
                 'cpu_pct': 0.0, 'mem_pct': 0.0, 'temps': [], 'ports': [], 'lldp': [], 'errors': [],
                 'counters_method': '', 'counters_sample_sec': 30, 'config_txt': ''
             }
@@ -391,19 +439,26 @@ def load_health_from_excel():
         if df2 is not None and not df2.empty:
             col_map2 = _map_col(df2.columns)
             for _, row in df2.iterrows():
-                h = str(row.get(col_map2.get('管理ip','管理IP'), '')).strip() or str(row.get(col_map2.get('ip地址','IP地址'), '')).strip()
-                if not h or h not in out: continue
-                try: out[h]['cpu_pct'] = float(row.get(col_map2.get('cpu使用率(%)','CPU使用率(%)'), 0.0) or 0.0)
-                except Exception: pass
-                try: out[h]['mem_pct'] = float(row.get(col_map2.get('内存使用率(%)','内存使用率(%)'), 0.0) or 0.0)
-                except Exception: pass
+                h = str(row.get(col_map2.get('管理ip', '管理IP'), '')).strip() or str(
+                    row.get(col_map2.get('ip地址', 'IP地址'), '')).strip()
+                if not h or h not in out:
+                    continue
+                try:
+                    out[h]['cpu_pct'] = float(row.get(col_map2.get('cpu使用率(%)', 'CPU使用率(%)'), 0.0) or 0.0)
+                except Exception:
+                    pass
+                try:
+                    out[h]['mem_pct'] = float(row.get(col_map2.get('内存使用率(%)', '内存使用率(%)'), 0.0) or 0.0)
+                except Exception:
+                    pass
                 # 温度列: 格式 Slot1_hotspot1_MAC(℃)，我们尽力还原成 list[tuple(name, value)]
                 temps = []
-                thr_w = {}; thr_e = {}
+                thr_w = {}
+                thr_e = {}
                 for raw_col in df2.columns:
                     col = str(raw_col)
                     if '℃' in col and '温度' in col:
-                        sensor = col.split('温度',1)[0].strip() or raw_col
+                        sensor = col.split('温度', 1)[0].strip() or raw_col
                         val = str(row.get(raw_col, '')).strip()
                         try:
                             fv = float(val)
@@ -422,46 +477,52 @@ def load_health_from_excel():
         if df3 is not None and not df3.empty:
             col_map3 = _map_col(df3.columns)
             for _, row in df3.iterrows():
-                h = str(row.get(col_map3.get('管理ip','管理IP'), '')).strip() or str(row.get(col_map3.get('ip地址','IP地址'), '')).strip()
-                if not h: continue
+                h = str(row.get(col_map3.get('管理ip', '管理IP'), '')).strip() or str(
+                    row.get(col_map3.get('ip地址', 'IP地址'), '')).strip()
+                if not h:
+                    continue
                 p = {}
                 col_pairs = [
-                    ('port', ('端口','端口名','端口名称','interface','port')),
-                    ('link', ('链路状态','链路','link')),
-                    ('speed', ('速率','协商速率','speed')),
-                    ('duplex', ('双工','duplex')),
-                    ('pvid', ('pvid','所属vlan','vlan')),
-                    ('description', ('描述','description','端口描述')),
-                    ('bandwidth_in_util_pct', ('入带宽利用率(%)','入利用率(%)','入带宽','入方向利用率(%)')),
-                    ('bandwidth_out_util_pct', ('出带宽利用率(%)','出利用率(%)','出带宽','出方向利用率(%)')),
-                    ('peak_in_mbps', ('入峰值(mbps)','入峰值')),
-                    ('peak_out_mbps', ('出峰值(mbps)','出峰值')),
-                    ('negotiated_speed_mbps', ('真实协商速率(mbps)','真实速率','协商速率')),
-                    ('rx_power_dbm', ('收光(dbm)','收光功率(dbm)','rxpower(dbm)','rx')),
-                    ('tx_power_dbm', ('发光(dbm)','发光功率(dbm)','txpower(dbm)','tx')),
-                    ('transceiver_status', ('光模块状态','光模块诊断','transceiver')),
-                    ('errors', ('错误数','err','计数错误')),
-                    ('counter_overflow', ('计数溢出','overflow')),
-                    ('counters_method', ('采集方法','带宽方法')),
+                    ('port', ('端口', '端口名', '端口名称', 'interface', 'port')),
+                    ('link', ('链路状态', '链路', 'link')),
+                    ('speed', ('速率', '协商速率', 'speed')),
+                    ('duplex', ('双工', 'duplex')),
+                    ('pvid', ('pvid', '所属vlan', 'vlan')),
+                    ('description', ('描述', 'description', '端口描述')),
+                    ('bandwidth_in_util_pct', ('入带宽利用率(%)', '入利用率(%)', '入带宽', '入方向利用率(%)')),
+                    ('bandwidth_out_util_pct', ('出带宽利用率(%)', '出利用率(%)', '出带宽', '出方向利用率(%)')),
+                    ('peak_in_mbps', ('入峰值(mbps)', '入峰值')),
+                    ('peak_out_mbps', ('出峰值(mbps)', '出峰值')),
+                    ('negotiated_speed_mbps', ('真实协商速率(mbps)', '真实速率', '协商速率')),
+                    ('rx_power_dbm', ('收光(dbm)', '收光功率(dbm)', 'rxpower(dbm)', 'rx')),
+                    ('tx_power_dbm', ('发光(dbm)', '发光功率(dbm)', 'txpower(dbm)', 'tx')),
+                    ('transceiver_status', ('光模块状态', '光模块诊断', 'transceiver')),
+                    ('errors', ('错误数', 'err', '计数错误')),
+                    ('counter_overflow', ('计数溢出', 'overflow')),
+                    ('counters_method', ('采集方法', '带宽方法')),
                 ]
                 for key, cands in col_pairs:
                     val = ''
                     for c in cands:
                         if norm_col(c) in col_map3:
                             val = str(row.get(col_map3[norm_col(c)], '')).strip()
-                            if val != '': break
+                            if val != '':
+                                break
                     if val != '':
                         # 尽力转成 float/int/bool
                         if 'util' in key or 'mbps' in key or 'power' in key:
-                            try: val = float(val)
-                            except Exception: pass
+                            try:
+                                val = float(val)
+                            except Exception:
+                                pass
                         elif key == 'counter_overflow':
-                            val = (val.lower() in ('是','true','1','yes','有','溢出'))
+                            val = (val.lower() in ('是', 'true', '1', 'yes', '有', '溢出'))
                         p[key] = val
                 if p:
                     port_by_host.setdefault(h, []).append(p)
         for h, plist in port_by_host.items():
-            if h in out: out[h]['ports'] = plist
+            if h in out:
+                out[h]['ports'] = plist
         # 4. 健康 Sheet3 异常汇总 → 按 host 分组还原 errors 列表
         try:
             df4 = _pd.read_excel(HEALTH_FILE, sheet_name=2, dtype=str).fillna('')
@@ -470,17 +531,23 @@ def load_health_from_excel():
         if df4 is not None and not df4.empty:
             col_map4 = _map_col(df4.columns)
             host_col = None
-            for c in ('管理ip','ip地址','管理地址','主机','host'):
-                if norm_col(c) in col_map4: host_col = col_map4[norm_col(c)]; break
+            for c in ('管理ip', 'ip地址', '管理地址', '主机', 'host'):
+                if norm_col(c) in col_map4:
+                    host_col = col_map4[norm_col(c)]
+                    break
             desc_col = None
-            for c in ('异常描述','异常信息','描述','详情','错误信息','error'):
-                if norm_col(c) in col_map4: desc_col = col_map4[norm_col(c)]; break
+            for c in ('异常描述', '异常信息', '描述', '详情', '错误信息', 'error'):
+                if norm_col(c) in col_map4:
+                    desc_col = col_map4[norm_col(c)]
+                    break
             if host_col and desc_col:
                 for _, row in df4.iterrows():
                     h = str(row.get(host_col, '')).strip()
-                    if not h or h not in out: continue
+                    if not h or h not in out:
+                        continue
                     msg = str(row.get(desc_col, '')).strip()
-                    if msg: out[h].setdefault('errors', []).append(msg)
+                    if msg:
+                        out[h].setdefault('errors', []).append(msg)
         log(f'[合并兜底] Excel 还原完成，共 {len(out)} 台设备基础数据，其中 {len(port_by_host)} 台已还原端口明细。')
         return out
     except Exception as e:
@@ -503,8 +570,9 @@ def safe_send(ssh, cmd, delay=1, timeout=60, read_timeout=None, max_attempts=1):
     for i in range(max(1, max_attempts)):
         try:
             r = ssh.send_command(cmd, delay_factor=delay, expect_string=r'>',
-                                   read_timeout=read_timeout or timeout) or ''
-            if len(r) > len(last): last = r
+                                 read_timeout=read_timeout or timeout) or ''
+            if len(r) > len(last):
+                last = r
             if any(tag in r for tag in ['DEVICE_SERIAL_NUMBER', 'DEVICE_NAME', 'BOARD TYPE', 'H3C Comware Software']):
                 return r
         except Exception as e:
@@ -526,10 +594,10 @@ def diagnose_template(ver_out, manuinfo_out, version_info):
     vi = version_info or {}
     ver_str = str(ver_out or '')
     manu_str = str(manuinfo_out or '')
-    v_model = str(vi.get('型号','')).strip()
-    v_hw = str(vi.get('硬件版本','')).strip()
-    v_sw = str(vi.get('软件版本','')).strip()
-    v_sn = str(vi.get('序列号SN','')).strip()
+    v_model = str(vi.get('型号', '')).strip()
+    v_hw = str(vi.get('硬件版本', '')).strip()
+    v_sw = str(vi.get('软件版本', '')).strip()
+    v_sn = str(vi.get('序列号SN', '')).strip()
 
     tri_ok = (v_model and v_model != '未知') and (v_hw and v_hw != '未知') and (v_sw and v_sw != '未知')
     sn_ok = v_sn and v_sn != '未知'
@@ -621,7 +689,9 @@ def parse_device_manuinfo(out):
     def flush_block():
         nonlocal cur_block, cur_fields
         if not cur_block or not cur_fields:
-            cur_block = None; cur_fields = {}; return
+            cur_block = None
+            cur_fields = {}
+            return
         if cur_block.lower().startswith('chassis') and 'self' in cur_block.lower():
             for k, v in cur_fields.items():
                 info.setdefault(k, v)
@@ -730,14 +800,16 @@ def parse_version(out, manuinfo=None):
     prompt_prefix_pat = re.compile(r'^<[\w\-\.]+>\s*')
     for raw in out.splitlines():
         line = raw.strip()
-        if not line: continue
+        if not line:
+            continue
         # 去 prompt 前缀 <XXX>
         if prompt_prefix_pat.match(line):
             line = prompt_prefix_pat.sub('', line).strip()
         # 去 terminal logging level 6 残留
         if line.lower().startswith('terminal logging level'):
             continue
-        if not line: continue
+        if not line:
+            continue
         cleaned_lines.append(line)
     cleaned_out = '\n'.join(cleaned_lines)
     has_real_signature = False
@@ -749,7 +821,8 @@ def parse_version(out, manuinfo=None):
                 r'Hardware\s+Version\s+is\s+',
                 r'Boot\s+image\s+version:']:
         if re.search(pat, cleaned_out, re.I):
-            has_real_signature = True; break
+            has_real_signature = True
+            break
     # 型号正则（允许行首任意残字/空格，比如 "isplay version\nH3C ... uptime is" 或 "erminal logging level 6" 去掉后命中）
     m = re.search(r'H3C\s+([\w\-\+\.\/]+)\s+uptime\s+is', cleaned_out, re.I | re.M)
     if m and m.group(1):
@@ -758,24 +831,28 @@ def parse_version(out, manuinfo=None):
             model = candidate
     if model == '未知' and has_real_signature:
         m = re.search(r'BOARD\s+TYPE:\s*([\w\-\.\+\/]+)', cleaned_out, re.I)
-        if m: model = m.group(1).strip()
+        if m:
+            model = m.group(1).strip()
     if model == '未知':
         for pat in [r'Uptime for\s+([\w\-\.\/\+]+)\s+is',
                     r'Switch\s+([\w\-\.\/\+]+)\s+is\s+up',
                     r'Hardware\s+Version\s+is\s+([\w\-\.]+)']:
             mm = re.search(pat, cleaned_out, re.I)
             if mm and mm.group(1):
-                model = mm.group(1).strip(); break
+                model = mm.group(1).strip()
+                break
     if model == '未知':
         m = re.search(r'板卡型号\s*[:：]\s*([\w\-\.\+\/]+)', cleaned_out, re.I)
         if m:
             model = m.group(1).strip()
     # Release Version: H3C S5048PV6-EI-PWR-3507P28（贪婪取型号，避免 non-greedy 把型号截断）
-    m = re.search(r'Release\s+Version:\s*H3C\s+([\w\-\+\/\.]+?)-(\d{2,6}[A-Z]?\d{0,4}[A-Z0-9]*)\s*$', cleaned_out, re.I | re.M)
+    m = re.search(
+        r'Release\s+Version:\s*H3C\s+([\w\-\+\/\.]+?)-(\d{2,6}[A-Z]?\d{0,4}[A-Z0-9]*)\s*$', cleaned_out, re.I | re.M)
     if not m:
         m = re.search(r'Release\s+Version:\s*H3C\s+([\w\-\+\/\.]+)-(\d{2,6}[A-Z]?\d{0,4}[A-Z0-9]*)', cleaned_out, re.I)
     if m:
-        if model == '未知': model = m.group(1).strip()
+        if model == '未知':
+            model = m.group(1).strip()
         sw_ver = m.group(2).strip()
     if sw_ver == '未知':
         m = re.search(r'H3C\s+Comware\s+Software,\s+Version\s+[\w\.\,]+\s*Release\s+([\w\.\-]+)', cleaned_out, re.I)
@@ -809,7 +886,8 @@ def parse_version(out, manuinfo=None):
                 r'序列号\s*[:：]\s*([A-Za-z0-9\-]+)']:
         mm = re.search(pat, cleaned_out, re.I)
         if mm:
-            sn = mm.group(1).strip(); break
+            sn = mm.group(1).strip()
+            break
     if sn == '未知' and manuinfo and not manuinfo.get('_manuinfo_missing_sn') and manuinfo.get('DEVICE_SERIAL_NUMBER'):
         sn = str(manuinfo['DEVICE_SERIAL_NUMBER']).strip()
     if not manuinfo:
@@ -831,13 +909,13 @@ def parse_version(out, manuinfo=None):
     if sw_ver == '未知' and mfg.get('chassis_fields') and mfg['chassis_fields'].get('SOFTWARE_VERSION'):
         sw_ver = str(mfg['chassis_fields']['SOFTWARE_VERSION']).strip()
     out2 = {'型号': model,
-           '序列号SN': sn,
-           '硬件版本': hw_ver, '软件版本': sw_ver}
+            '序列号SN': sn,
+            '硬件版本': hw_ver, '软件版本': sw_ver}
     if mfg.get('_manuinfo_missing_sn'):
         out2['_manuinfo_missing_sn'] = True
     if mfg.get('slots'):
-        out2['板卡清单'] = [{'槽位': s.get('block',''), '板卡型号': s.get('DEVICE_NAME',''), '板卡SN': s.get('DEVICE_SERIAL_NUMBER',''),
-                             '板卡MAC': s.get('MAC_ADDRESS',''), '生产日期': s.get('MANUFACTURING_DATE','')} for s in mfg['slots']]
+        out2['板卡清单'] = [{'槽位': s.get('block', ''), '板卡型号': s.get('DEVICE_NAME', ''), '板卡SN': s.get('DEVICE_SERIAL_NUMBER', ''),
+                         '板卡MAC': s.get('MAC_ADDRESS', ''), '生产日期': s.get('MANUFACTURING_DATE', '')} for s in mfg['slots']]
     if mfg.get('chassis_fields'):
         out2['机箱MAC'] = mfg['chassis_fields'].get('MAC_ADDRESS', '')
         out2['生产日期'] = mfg['chassis_fields'].get('MANUFACTURING_DATE', '')
@@ -851,13 +929,17 @@ def parse_cpu(out):
     best = 0.0
     seen = False
     m = re.search(r'Statistics\s+interval\s+in\s+seconds?:\s*\d+[\s\S]*?5\s+seconds?:\s*(\d+(?:\.\d+)?)%', out, re.I)
-    if m: return float(m.group(1))
+    if m:
+        return float(m.group(1))
     m = re.search(r'CPU\s+utilization\s+for\s+five\s+seconds:\s*(\d+(?:\.\d+)?)%', out, re.I)
-    if m: return float(m.group(1))
+    if m:
+        return float(m.group(1))
     m = re.search(r'Slot\s+\d+\s+CPU\s+\d+\s+CPU\s+usage:[\s\S]*?(\d+(?:\.\d+)?)%', out, re.I)
-    if m: return float(m.group(1))
+    if m:
+        return float(m.group(1))
     m = re.search(r'CPU\s+Usage.*?(\d+(?:\.\d+)?)\s*%', out, re.I)
-    if m: return float(m.group(1))
+    if m:
+        return float(m.group(1))
     return best
 
 
@@ -878,7 +960,9 @@ def parse_memory(out):
                 vals = lines[i+1].strip().split()
                 if len(vals) >= 8:
                     try:
-                        total = float(vals[1]); used = float(vals[2]); free = float(vals[3])
+                        total = float(vals[1])
+                        used = float(vals[2])
+                        free = float(vals[3])
                         free_ratio = float(vals[-1].rstrip('%'))
                         used_ratio = round(100.0 - free_ratio, 2)
                         slot_rows.append((cur_slot, used_ratio, used, total))
@@ -891,14 +975,18 @@ def parse_memory(out):
         total = sum(r[3] for r in slot_rows)
         return used_ratio, used, total
     m = re.search(r'Memory\s+Using\s+(\d+(?:\.\d+)?)\s*%', out, re.I)
-    if m: return float(m.group(1)), 0.0, 0.0
-    used = 0.0; total = 0.0
+    if m:
+        return float(m.group(1)), 0.0, 0.0
+    used = 0.0
+    total = 0.0
     for line in lines:
         line = line.strip()
-        if not line: continue
+        if not line:
+            continue
         m_num = list(map(float, re.findall(r'(\d+(?:\.\d+)?)', line)))
         if len(m_num) >= 3 and any(k in line.lower() for k in ['mem:', 'memory', '内存']):
-            total, used = m_num[0], m_num[1]; break
+            total, used = m_num[0], m_num[1]
+            break
     pct = round((used / total * 100.0), 2) if total > 0 else 0.0
     return pct, used, total
 
@@ -917,12 +1005,13 @@ def parse_temperature(out):
         if 'Temperature' in line and 'Warning' in line and 'Alarm' in line:
             header_idx = i
             cols_map = _split_columns_by_header(line,
-                ['Slot', 'Sensor', 'Name', 'Temperature', 'Lower', 'Warning', 'Alarm', 'Shutdown'])
+                                                ['Slot', 'Sensor', 'Name', 'Temperature', 'Lower', 'Warning', 'Alarm', 'Shutdown'])
             break
     if header_idx is None or cols_map is None:
         for line in lines:
             s = line.strip()
-            if not s: continue
+            if not s:
+                continue
             m = re.findall(r'(\d+(?:\.\d+)?)', s)
             if any(k in s.lower() for k in ['sensor', '温度', 'temp', 'cpu']) and not any(k in s.lower() for k in ['warning', 'alarm', 'shutdown', 'lower']):
                 for n in m:
@@ -930,22 +1019,28 @@ def parse_temperature(out):
                         v = float(n)
                         if 10 <= v <= 130:
                             name = s.split()[0] if s.split() else 'Sensor'
-                            res.append((name, v)); break
-                    except ValueError: pass
+                            res.append((name, v))
+                            break
+                    except ValueError:
+                        pass
         return res
     has_name = 'Name' in cols_map
     for line in lines[header_idx + 1:]:
-        if len(line) < 4: continue
+        if len(line) < 4:
+            continue
         if line.strip().startswith('---') or line.strip().startswith('<') or not line.strip():
             continue
         parts = re.findall(r'\d+\.?\d*|NA|N/A', line)
-        if not parts: continue
+        if not parts:
+            continue
         try:
             temp_cell = _cut(line, cols_map['Temperature'])
             m = re.search(r'\-?\d+(?:\.\d+)?', temp_cell)
-            if not m: continue
+            if not m:
+                continue
             t = float(m.group(0))
-            if t < -20 or t > 200: continue
+            if t < -20 or t > 200:
+                continue
             slot = _cut(line, cols_map.get('Slot', (0, 8))) if 'Slot' in cols_map else ''
             sensor = _cut(line, cols_map.get('Sensor', (0, 8))) if 'Sensor' in cols_map else ''
             name = _cut(line, cols_map.get('Name', (0, 8))) if has_name else ''
@@ -972,7 +1067,8 @@ def parse_temperature(out):
             primary_label = ''
             for cand in [sensor_clean, name_clean]:
                 if cand and cand.lower() != 'na':
-                    primary_label = cand; break
+                    primary_label = cand
+                    break
             if not primary_label and labels:
                 primary_label = labels[0]
             if not primary_label:
@@ -981,13 +1077,16 @@ def parse_temperature(out):
             try:
                 warn_cell = _cut(line, cols_map['Warning'])
                 wm = re.search(r'\-?\d+(?:\.\d+)?', warn_cell)
-                if wm and abs(float(wm.group(0)) - t) < 0.01: continue
+                if wm and abs(float(wm.group(0)) - t) < 0.01:
+                    continue
                 alarm_cell = _cut(line, cols_map['Alarm'])
                 am = re.search(r'\-?\d+(?:\.\d+)?', alarm_cell)
-                if am and abs(float(am.group(0)) - t) < 0.01: continue
+                if am and abs(float(am.group(0)) - t) < 0.01:
+                    continue
                 low_cell = _cut(line, cols_map['Lower'])
                 lm = re.search(r'\-?\d+(?:\.\d+)?', low_cell)
-                if lm and abs(float(lm.group(0)) - t) < 0.01: continue
+                if lm and abs(float(lm.group(0)) - t) < 0.01:
+                    continue
             except Exception:
                 pass
             res.append((primary_label, t))
@@ -1005,21 +1104,29 @@ def parse_interface_brief(out):
         line = lines[i]
         if 'Brief information on interfaces in route mode' in line:
             section = 'route'
-            i += 1; continue
+            i += 1
+            continue
         if 'Brief information on interfaces in bridge mode' in line:
             section = 'bridge'
-            i += 1; continue
+            i += 1
+            continue
         if section == 'bridge' and ('Interface' in line and 'Link' in line and 'Speed' in line and 'Duplex' in line):
             cols = _split_columns_by_header(line,
-                ['Interface', 'Link', 'Speed', 'Duplex', 'Type', 'PVID', 'Description'])
+                                            ['Interface', 'Link', 'Speed', 'Duplex', 'Type', 'PVID', 'Description'])
             j = i + 1
             while j < len(lines):
                 row_line = lines[j]
-                if not row_line.strip(): j += 1; continue
-                if row_line.strip().startswith('<'): break
+                if not row_line.strip():
+                    j += 1
+                    continue
+                if row_line.strip().startswith('<'):
+                    break
                 if 'Brief information on interfaces' in row_line or row_line.strip().startswith('Speed:') or row_line.strip().startswith('Link:') or row_line.strip().startswith('Type:') or row_line.strip().startswith('Duplex:'):
-                    j += 1; continue
-                if len(row_line) < 4: j += 1; continue
+                    j += 1
+                    continue
+                if len(row_line) < 4:
+                    j += 1
+                    continue
                 try:
                     port = _cut(row_line, cols['Interface'])
                     link = _cut(row_line, cols['Link'])
@@ -1029,7 +1136,8 @@ def parse_interface_brief(out):
                     pvid = _cut(row_line, cols.get('PVID', (0, 8))) if 'PVID' in cols else ''
                     desc = _cut(row_line, cols.get('Description', (0, 8))) if 'Description' in cols else ''
                     if not re.match(r'^[A-Za-z\-]+\d+(?:/\d+)*\d*$', port):
-                        j += 1; continue
+                        j += 1
+                        continue
                     rows.append({'端口': port, '链路状态': link, '速率配置': speed, '双工模式': duplex,
                                  '接口类型': ptype, 'PVID': pvid, '描述': desc})
                 except Exception:
@@ -1042,23 +1150,30 @@ def parse_interface_brief(out):
         header_idx = None
         for idx, line in enumerate(lines):
             if 'Link' in line and 'Speed' in line and 'Type' in line:
-                header_idx = idx; break
+                header_idx = idx
+                break
         if header_idx is not None:
             for line in lines[header_idx + 1:]:
                 s = line.strip()
-                if not s: continue
-                if s.startswith('<') or s.startswith('['): break
+                if not s:
+                    continue
+                if s.startswith('<') or s.startswith('['):
+                    break
                 parts = s.split()
-                if len(parts) < 5: continue
+                if len(parts) < 5:
+                    continue
                 port = parts[0]
-                if not re.match(r'^[A-Za-z\-]+\d+(?:/\d+)*\d*$', port): continue
-                if len(parts) >= 7 and (parts[3] in ('A','T','H','F(a)','H(a)','A(a)')):
+                if not re.match(r'^[A-Za-z\-]+\d+(?:/\d+)*\d*$', port):
+                    continue
+                if len(parts) >= 7 and (parts[3] in ('A', 'T', 'H', 'F(a)', 'H(a)', 'A(a)')):
                     link, speed, duplex, ptype, pvid = parts[1], parts[2], parts[3], parts[4], parts[5]
                     desc = ' '.join(parts[6:]) if len(parts) > 6 else ''
-                    rows.append({'端口':port,'链路状态':link,'速率配置':speed,'双工模式':duplex,'接口类型':ptype,'PVID':pvid,'描述':desc})
+                    rows.append({'端口': port, '链路状态': link, '速率配置': speed,
+                                '双工模式': duplex, '接口类型': ptype, 'PVID': pvid, '描述': desc})
                 else:
                     link, speed, ptype = parts[-3], parts[-2], parts[-1]
-                    rows.append({'端口':port,'链路状态':link,'速率配置':speed,'双工模式':'','接口类型':ptype,'PVID':'','描述':''})
+                    rows.append({'端口': port, '链路状态': link, '速率配置': speed,
+                                '双工模式': '', '接口类型': ptype, 'PVID': '', '描述': ''})
     return rows
 
 
@@ -1071,16 +1186,22 @@ def parse_counters_simple(out):
     header_idx = None
     for idx, line in enumerate(lines):
         if 'Interface' in line and 'Total' in line and 'Err' in line:
-            header_idx = idx; break
-    if header_idx is None: return res
+            header_idx = idx
+            break
+    if header_idx is None:
+        return res
     for line in lines[header_idx + 1:]:
         s = line.strip()
-        if not s: break
-        if s.startswith('<') or s.startswith('Overflow:') or s.startswith('--:'): break
+        if not s:
+            break
+        if s.startswith('<') or s.startswith('Overflow:') or s.startswith('--:'):
+            break
         parts = s.split()
-        if len(parts) < 2: continue
+        if len(parts) < 2:
+            continue
         port = parts[0]
-        if not re.match(r'^[A-Za-z\-]+\d+(?:/\d+)*\d*$', port): continue
+        if not re.match(r'^[A-Za-z\-]+\d+(?:/\d+)*\d*$', port):
+            continue
         overflow = False
         err = None
         # Err列: 最后一列可能是数字或 Overflow
@@ -1124,22 +1245,31 @@ def parse_counters_rate(out):
     header_idx = None
     for idx, line in enumerate(out.splitlines()):
         if 'Interface' in line and ('In' in line or 'Out' in line or 'input' in line or 'output' in line):
-            header_idx = idx; break
-    if header_idx is None: return map_in, map_out
-    cols = _split_columns_by_header(out.splitlines()[header_idx], ['Interface', 'In', 'Out', 'InUti', 'OutUti', 'input', 'output'])
+            header_idx = idx
+            break
+    if header_idx is None:
+        return map_in, map_out
+    cols = _split_columns_by_header(out.splitlines()[header_idx], [
+                                    'Interface', 'In', 'Out', 'InUti', 'OutUti', 'input', 'output'])
     for line in out.splitlines()[header_idx + 1:]:
         s = line.strip()
-        if not s: continue
-        if s.startswith('<'): break
-        if 'Interface' in s: continue
+        if not s:
+            continue
+        if s.startswith('<'):
+            break
+        if 'Interface' in s:
+            continue
         parts = s.split()
-        if len(parts) < 2: continue
+        if len(parts) < 2:
+            continue
         port = parts[0]
-        if not re.match(r'^[A-Za-z\-]+\d+(?:/\d+)*\d*$', port): continue
+        if not re.match(r'^[A-Za-z\-]+\d+(?:/\d+)*\d*$', port):
+            continue
         nums = []
         for p in parts[1:]:
             m = re.match(r'(\d+(?:\.\d+)?)', p)
-            if m: nums.append(float(m.group(1)))
+            if m:
+                nums.append(float(m.group(1)))
         if len(nums) >= 2:
             map_in[port] = nums[-2]
             map_out[port] = nums[-1]
@@ -1190,12 +1320,14 @@ def parse_transceiver(out):
                     candidate = lines[j]
                     cs = candidate.strip()
                     if not cs:
-                        j += 1; continue
+                        j += 1
+                        continue
                     c_low = cs.lower()
                     if c_low.startswith(('alarm', 'warning')):
                         break
                     if c_low.startswith(('current', 'note', 'the', '---', 'high', 'low')):
-                        j += 1; continue
+                        j += 1
+                        continue
                     if LONG_PORT_RE.match(cs.split()[0] if cs.split() else ''):
                         break
                     nums = NUM_RE.findall(cs)
@@ -1236,17 +1368,21 @@ def parse_lldp_list(out):
             header_idx = i
             header_line = line.rstrip('\n').rstrip('\r')
             cols = _split_columns_by_header(header_line,
-                ['Local Interface', 'Chassis ID', 'Port ID', 'System Name'])
+                                            ['Local Interface', 'Chassis ID', 'Port ID', 'System Name'])
             break
     if header_idx is None:
         for line in lines:
             s = line.strip()
-            if not s: continue
+            if not s:
+                continue
             if not re.match(r'^(?:GigabitEthernet|Ten-GigabitEthernet|GE|XGE|FGE|HGE|FortyGigE|HundredGigE|Bridge-Aggregation)\s*\d', s, re.I):
                 continue
             parts = s.split()
-            if len(parts) < 4: continue
-            loc = parts[0]; neigh_port = parts[-2]; neigh_name = parts[-1]
+            if len(parts) < 4:
+                continue
+            loc = parts[0]
+            neigh_port = parts[-2]
+            neigh_name = parts[-1]
             loc_s = port_to_short(loc) if not _looks_like_mac(loc) else loc
             nport_s = port_to_short(neigh_port) if not _looks_like_mac(neigh_port) else neigh_port
             if neigh_name == '-':
@@ -1259,11 +1395,13 @@ def parse_lldp_list(out):
     pid_range = cols.get('Port ID')
     sysname_start = cols.get('System Name', (None, None))[0] if cols.get('System Name') else None
     for line in lines[header_idx + 1:]:
-        if len(line) < 6: continue
+        if len(line) < 6:
+            continue
         st = line.strip()
         if st.startswith('<') or st.startswith('Chassis ID') or st.startswith('Default --') or st.startswith('*') or st.startswith('#'):
             continue
-        if not st: continue
+        if not st:
+            continue
         try:
             loc_raw = _cut(line, loc_range) if loc_range else ''
             neigh_port_raw = _cut(line, pid_range) if pid_range else ''
@@ -1282,7 +1420,8 @@ def parse_lldp_list(out):
             neigh_port = port_to_short(neigh_port_raw) if not _looks_like_mac(neigh_port_raw) else neigh_port_raw
             if neigh_name == '-':
                 neigh_name = ''
-            if not re.match(r'^[A-Za-z\-]+\d', loc): continue
+            if not re.match(r'^[A-Za-z\-]+\d', loc):
+                continue
             entries.append({'本地端口': loc, '邻居系统名': str(neigh_name).strip(), '邻居端口': neigh_port})
         except Exception:
             continue
@@ -1320,10 +1459,14 @@ def parse_interface_util(out):
                 res[cur_port]['协商速率Mbps'] = round(float(m_bw.group(1)) / 1000.0, 3)
             m_spd = re.search(r'(\d+(?:\.\d+)?)\s*(mbps|gbps|kbps)\-speed\s*mode', low)
             if m_spd:
-                val = float(m_spd.group(1)); unit = m_spd.group(2).lower()
-                if unit == 'gbps': res[cur_port]['真实速率Mbps'] = val * 1000.0
-                elif unit == 'kbps': res[cur_port]['真实速率Mbps'] = val / 1000.0
-                else: res[cur_port]['真实速率Mbps'] = val
+                val = float(m_spd.group(1))
+                unit = m_spd.group(2).lower()
+                if unit == 'gbps':
+                    res[cur_port]['真实速率Mbps'] = val * 1000.0
+                elif unit == 'kbps':
+                    res[cur_port]['真实速率Mbps'] = val / 1000.0
+                else:
+                    res[cur_port]['真实速率Mbps'] = val
             pkin = re.search(r'peak\s+input\s+rate:\s*(\d+(?:\.\d+)?)\s*bytes/sec', low)
             if pkin:
                 res[cur_port]['峰值入Mbps'] = round(float(pkin.group(1)) * 8.0 / 1_000_000.0, 2)
@@ -1333,43 +1476,59 @@ def parse_interface_util(out):
             if 'last 300 seconds input' in low:
                 m_in = re.search(r'last\s+300\s+seconds\s+input\b[\s\S]*?(\d+(?:\.\d+)?)\s*%', low)
                 if m_in:
-                    try: res[cur_port]['入带宽%'] = float(m_in.group(1))
-                    except ValueError: pass
+                    try:
+                        res[cur_port]['入带宽%'] = float(m_in.group(1))
+                    except ValueError:
+                        pass
             if 'last 300 seconds output' in low:
                 m_out = re.search(r'last\s+300\s+seconds\s+output\b[\s\S]*?(\d+(?:\.\d+)?)\s*%', low)
                 if m_out:
-                    try: res[cur_port]['出带宽%'] = float(m_out.group(1))
-                    except ValueError: pass
+                    try:
+                        res[cur_port]['出带宽%'] = float(m_out.group(1))
+                    except ValueError:
+                        pass
         i += 1
     return res
 
 
 def classify_numeric(v, warn, err, higher_bad=True, ok_max=None, ok_min=None):
-    try: v = float(v)
-    except Exception: return '未知', v
+    try:
+        v = float(v)
+    except Exception:
+        return '未知', v
     if ok_min is not None and ok_max is not None:
         if not (ok_min <= v <= ok_max):
             if v < ok_min or v > ok_max:
                 return ('错误', v) if (v < ok_min - 3 or v > ok_max + 3) else ('告警', v)
         return '正常', v
     if higher_bad:
-        if v >= err: return '错误', v
-        if v >= warn: return '告警', v
+        if v >= err:
+            return '错误', v
+        if v >= warn:
+            return '告警', v
     else:
-        if v <= err: return '错误', v
-        if v <= warn: return '告警', v
+        if v <= err:
+            return '错误', v
+        if v <= warn:
+            return '告警', v
     return '正常', v
 
 
 def speed_to_mbps(s):
     s = str(s).strip().lower()
-    if not s or 'auto' in s: return 0.0
+    if not s or 'auto' in s:
+        return 0.0
     m = re.match(r'(\d+(?:\.\d+)?)\s*([gmk])?', s)
-    if not m: return 0.0
-    v = float(m.group(1)); u = (m.group(2) or '').lower()
-    if u == 'g': return v * 1000.0
-    if u == 'm' or u == '': return v
-    if u == 'k': return v / 1000.0
+    if not m:
+        return 0.0
+    v = float(m.group(1))
+    u = (m.group(2) or '').lower()
+    if u == 'g':
+        return v * 1000.0
+    if u == 'm' or u == '':
+        return v
+    if u == 'k':
+        return v / 1000.0
     return v
 
 
@@ -1400,7 +1559,7 @@ def collect_one(d, counter_sample_seconds=30):
                 or combined_manuinfo.startswith('display version')
                 or (ver_out.strip() and combined_manuinfo in ver_out.strip())
                 or combined_manuinfo.lower().startswith('isplay version')
-                or '<' in combined_manuinfo[:80] and combined_manuinfo.strip().startswith('<') and 'display version' in combined_manuinfo[:400]):
+                    or '<' in combined_manuinfo[:80] and combined_manuinfo.strip().startswith('<') and 'display version' in combined_manuinfo[:400]):
                 combined_manuinfo = (ver_out.strip() + '\n' + combined_manuinfo).strip()
             combined_version = (ver_out or '').strip()
             if manuinfo_out and manuinfo_out.strip() and ('DEVICE_NAME' in manuinfo_out or 'DEVICE_SERIAL_NUMBER' in manuinfo_out or 'BOARD TYPE' in manuinfo_out):
@@ -1427,7 +1586,7 @@ def collect_one(d, counter_sample_seconds=30):
                     try_retry = safe_send(ssh, c_c, delay=c_d, timeout=c_t, read_timeout=c_t, max_attempts=1)
                     if (try_retry
                         and 'DEVICE_SERIAL_NUMBER' in try_retry
-                        and len(try_retry) > len(manuinfo_out or '')):
+                            and len(try_retry) > len(manuinfo_out or '')):
                         manuinfo_out = try_retry
                         res['_raw_manuinfo'] = manuinfo_out
                         combined_manuinfo = (ver_out.strip() + '\n' + manuinfo_out.strip()).strip()
@@ -1463,7 +1622,8 @@ def collect_one(d, counter_sample_seconds=30):
             for c in ['display environment', 'display temperature', 'display fan', 'display power']:
                 o = safe_send(ssh, c, delay=2, timeout=45)
                 if any(k in o.lower() for k in ['temp', '温度', 'sensor', 'degree', '°c', ' c ']):
-                    tmp = o; break
+                    tmp = o
+                    break
             res['temps'] = parse_temperature(tmp) if tmp else []
             if tmp:
                 w_t, e_t = parse_environment_thresholds(tmp, model_name=res['version_info'].get('型号', ''))
@@ -1509,18 +1669,20 @@ def collect_one(d, counter_sample_seconds=30):
                                 speed_mbps = 1000.0
                         except Exception:
                             pass
-                    t_in1 = m_in1.get(port, (0,0,False))[0]
-                    t_in2 = m_in2.get(port, (0,0,False))[0]
-                    t_out1 = m_out1.get(port, (0,0,False))[0]
-                    t_out2 = m_out2.get(port, (0,0,False))[0]
+                    t_in1 = m_in1.get(port, (0, 0, False))[0]
+                    t_in2 = m_in2.get(port, (0, 0, False))[0]
+                    t_out1 = m_out1.get(port, (0, 0, False))[0]
+                    t_out2 = m_out2.get(port, (0, 0, False))[0]
                     in_util = estimate_utilization_from_counters(t_in1, t_in2, gap, speed_mbps)
                     out_util = estimate_utilization_from_counters(t_out1, t_out2, gap, speed_mbps)
                     map_in[port] = in_util
                     map_out[port] = out_util
-                    p['入方向计数溢出'] = '是' if (m_in1.get(port,(0,0,False))[2] or m_in2.get(port,(0,0,False))[2]) else '否'
-                    p['出方向计数溢出'] = '是' if (m_out1.get(port,(0,0,False))[2] or m_out2.get(port,(0,0,False))[2]) else '否'
-                    p['入方向错误包'] = m_in2.get(port, (0,0,False))[1] or 0
-                    p['出方向错误包'] = m_out2.get(port, (0,0,False))[1] or 0
+                    p['入方向计数溢出'] = '是' if (m_in1.get(port, (0, 0, False))[2]
+                                           or m_in2.get(port, (0, 0, False))[2]) else '否'
+                    p['出方向计数溢出'] = '是' if (m_out1.get(port, (0, 0, False))[2]
+                                           or m_out2.get(port, (0, 0, False))[2]) else '否'
+                    p['入方向错误包'] = m_in2.get(port, (0, 0, False))[1] or 0
+                    p['出方向错误包'] = m_out2.get(port, (0, 0, False))[1] or 0
             else:
                 res['counters_method'] = 'counters_rate'
                 for p in res['ports']:
@@ -1562,7 +1724,8 @@ def collect_one(d, counter_sample_seconds=30):
                       'display transceiver diagnosis', 'display transceiver']:
                 o = safe_send(ssh, c, delay=3, timeout=120)
                 if any(k in o.lower() for k in ['power', 'rx', 'tx', '收光', '发光', 'bias', 'voltage', 'current']):
-                    trans = o; break
+                    trans = o
+                    break
             diag_map = parse_transceiver(trans) if trans else {}
             for p in res['ports']:
                 p['光模块诊断'] = diag_map.get(p['端口'], {})
@@ -1606,7 +1769,8 @@ def _hs(wb, sheet, cols):
     ws = wb[sheet]
     for i, c in enumerate(cols, 1):
         cell = ws.cell(row=1, column=i, value=c)
-        cell.font = Font(bold=True, color='FFFFFFFF'); cell.fill = HEAD_FILL
+        cell.font = Font(bold=True, color='FFFFFFFF')
+        cell.fill = HEAD_FILL
         cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
         cell.border = BORDER
     for i in range(1, len(cols) + 1):
@@ -1616,7 +1780,8 @@ def _hs(wb, sheet, cols):
 
 def write_ledger(data):
     wb = Workbook()
-    ws = wb.active; ws.title = '设备台账'
+    ws = wb.active
+    ws.title = '设备台账'
     cols = ['序号', '设备名称', '管理IP', '是否核心', '登录状态', '型号', '序列号SN', '硬件版本', '软件版本', '诊断模板名', '采集时间', '备注']
     _hs(wb, '设备台账', cols)
     for idx, d in enumerate(data, 1):
@@ -1642,11 +1807,16 @@ def write_ledger(data):
                            model, sn, hw, sw, tmpl, d['采集时间'], note]
                     for c, val in enumerate(row, 1):
                         cell = ws.cell(row=idx + 1, column=c, value=val)
-                        cell.border = BORDER; cell.alignment = Alignment(vertical='center', wrap_text=True)
-                        if d['登录状态'] != '成功': cell.fill = ERR_FILL
-                        elif tmpl in ('A-完整', 'D-多Slot框式'): cell.fill = OK_FILL
-                        elif tmpl.startswith('B-') or tmpl == 'C-版本截流': cell.fill = WARN_FILL
-                        else: cell.fill = ERR_FILL
+                        cell.border = BORDER
+                        cell.alignment = Alignment(vertical='center', wrap_text=True)
+                        if d['登录状态'] != '成功':
+                            cell.fill = ERR_FILL
+                        elif tmpl in ('A-完整', 'D-多Slot框式'):
+                            cell.fill = OK_FILL
+                        elif tmpl.startswith('B-') or tmpl == 'C-版本截流':
+                            cell.fill = WARN_FILL
+                        else:
+                            cell.fill = ERR_FILL
                     continue
                 else:
                     note_parts.append(tmpl_note)
@@ -1658,10 +1828,12 @@ def write_ledger(data):
             diag.append(f"[诊断] 以下字段解析失败: {','.join(missing)}；请把本段原始输出贴回补正则")
             diag.append('===== display version 原始输出（前1200字）=====')
             raw_v = (d.get('_raw_version') or '')[:1200]
-            if raw_v: diag.append(raw_v)
+            if raw_v:
+                diag.append(raw_v)
             diag.append('===== display device manuinfo 原始输出（前800字）=====')
             raw_m = (d.get('_raw_manuinfo') or '')[:800]
-            if raw_m: diag.append(raw_m)
+            if raw_m:
+                diag.append(raw_m)
             note_parts.append('\n'.join(diag))
         note = '\n'.join(note_parts)[:4000]
         row = [idx, d['name'], d['host'], '是' if d['is_core'] else '否', d['登录状态'],
@@ -1669,19 +1841,27 @@ def write_ledger(data):
                d['采集时间'], note]
         for c, val in enumerate(row, 1):
             cell = ws.cell(row=idx + 1, column=c, value=val)
-            cell.border = BORDER; cell.alignment = Alignment(vertical='center', wrap_text=True)
-            if d['登录状态'] != '成功': cell.fill = ERR_FILL
-            elif tmpl in ('A-完整', 'D-多Slot框式'): cell.fill = OK_FILL
-            elif tmpl.startswith('B-') or tmpl == 'C-版本截流': cell.fill = WARN_FILL
-            else: cell.fill = ERR_FILL
+            cell.border = BORDER
+            cell.alignment = Alignment(vertical='center', wrap_text=True)
+            if d['登录状态'] != '成功':
+                cell.fill = ERR_FILL
+            elif tmpl in ('A-完整', 'D-多Slot框式'):
+                cell.fill = OK_FILL
+            elif tmpl.startswith('B-') or tmpl == 'C-版本截流':
+                cell.fill = WARN_FILL
+            else:
+                cell.fill = ERR_FILL
     wb.save(str(LEDGER_FILE))
     log(f'设备台账已输出: {LEDGER_FILE}')
 
 
 def _f(c, tag):
-    if tag == '错误': c.fill = ERR_FILL
-    elif tag == '告警': c.fill = WARN_FILL
-    else: c.fill = OK_FILL
+    if tag == '错误':
+        c.fill = ERR_FILL
+    elif tag == '告警':
+        c.fill = WARN_FILL
+    else:
+        c.fill = OK_FILL
 
 
 def parse_environment_thresholds(out, model_name=''):
@@ -1696,18 +1876,22 @@ def parse_environment_thresholds(out, model_name=''):
     for i, line in enumerate(lines):
         if 'Temperature' in line and 'Warning' in line and 'Alarm' in line:
             header_idx = i
-            cols_map = _split_columns_by_header(line, ['Slot', 'Sensor', 'Name', 'Temperature', 'Lower', 'Warning', 'Alarm', 'Shutdown'])
+            cols_map = _split_columns_by_header(
+                line, ['Slot', 'Sensor', 'Name', 'Temperature', 'Lower', 'Warning', 'Alarm', 'Shutdown'])
             break
     if header_idx is None or not cols_map:
         return None, None
     for line in lines[header_idx + 1:]:
-        if len(line) < 4: continue
-        if line.strip().startswith('<'): continue
+        if len(line) < 4:
+            continue
+        if line.strip().startswith('<'):
+            continue
         try:
             sensor_name = ''
             if 'Sensor' in cols_map:
                 sc = _cut(line, cols_map['Sensor'])
-                if sc: sensor_name = re.sub(r'\s+', ' ', sc).strip()
+                if sc:
+                    sensor_name = re.sub(r'\s+', ' ', sc).strip()
             if 'Name' in cols_map and cols_map['Name']:
                 nc = _cut(line, cols_map['Name'])
                 if nc and nc.strip() and (not sensor_name or sensor_name.isdigit()):
@@ -1715,24 +1899,32 @@ def parse_environment_thresholds(out, model_name=''):
             slot_s = ''
             if 'Slot' in cols_map:
                 slot_c = _cut(line, cols_map['Slot'])
-                if slot_c: slot_s = slot_c.strip()
+                if slot_c:
+                    slot_s = slot_c.strip()
             # 合并 Slot+Sensor：若多 Slot 相同 Sensor 名，按 Slot-Sensor 做 key，单 Slot 直接 Sensor name 也行
             base_names = [sensor_name]
-            if slot_s and sensor_name: base_names.insert(0, f'{slot_s}-{sensor_name}')
+            if slot_s and sensor_name:
+                base_names.insert(0, f'{slot_s}-{sensor_name}')
             w_val = a_val = None
             w_cell = _cut(line, cols_map['Warning'])
             m = re.search(r'\-?\d+(?:\.\d+)?', w_cell)
             if m and m.group(0) not in ('0', 'NA', 'N/A'):
-                try: w_val = round(float(m.group(0)) * 0.92, 2)
-                except ValueError: w_val = None
+                try:
+                    w_val = round(float(m.group(0)) * 0.92, 2)
+                except ValueError:
+                    w_val = None
             a_cell = _cut(line, cols_map['Alarm'])
             m = re.search(r'\-?\d+(?:\.\d+)?', a_cell)
             if m and m.group(0) not in ('0', 'NA', 'N/A'):
-                try: a_val = round(float(m.group(0)) * 0.95, 2)
-                except ValueError: a_val = None
-            if not base_names: continue
+                try:
+                    a_val = round(float(m.group(0)) * 0.95, 2)
+                except ValueError:
+                    a_val = None
+            if not base_names:
+                continue
             for bn in base_names:
-                if not bn: continue
+                if not bn:
+                    continue
                 if w_val is not None:
                     warn_dict.setdefault(bn, w_val)
                 if a_val is not None:
@@ -1740,9 +1932,12 @@ def parse_environment_thresholds(out, model_name=''):
                 # 别名（judge_need_check 里 4 种变形匹配，这里多 key 一次存入兜底）
                 variants = [bn.replace(' ', '_'), bn.lower(), bn.upper(), bn.replace(' ', '')]
                 for v in variants:
-                    if v == bn: continue
-                    if w_val is not None: warn_dict.setdefault(v, w_val)
-                    if a_val is not None: err_dict.setdefault(v, a_val)
+                    if v == bn:
+                        continue
+                    if w_val is not None:
+                        warn_dict.setdefault(v, w_val)
+                    if a_val is not None:
+                        err_dict.setdefault(v, a_val)
         except Exception:
             continue
     return (warn_dict or None), (err_dict or None)
@@ -1771,54 +1966,74 @@ def _health_header_rows(data):
         elif not temps_src:
             temps_src = [('未知', -1.0)]
         for t in temps_src:
-            t_val = None; t_name = ''
+            t_val = None
+            t_name = ''
             if isinstance(t, dict):
                 t_name = str(t.get('name') or t.get('sensor') or t.get('label') or '')
-                try: t_val = float(t.get('value') or 0.0)
-                except Exception: t_val = None
+                try:
+                    t_val = float(t.get('value') or 0.0)
+                except Exception:
+                    t_val = None
             elif isinstance(t, (tuple, list)) and len(t) >= 2:
                 t_name = str(t[0] or '')
-                try: t_val = float(t[1] or 0.0)
-                except Exception: t_val = None
-            if t_val is None: continue
-            if t_val > temp_max_val: temp_max_val = t_val
+                try:
+                    t_val = float(t[1] or 0.0)
+                except Exception:
+                    t_val = None
+            if t_val is None:
+                continue
+            if t_val > temp_max_val:
+                temp_max_val = t_val
             wv = ev = None
             for cand in [t_name, t_name.replace(' ', '_'), t_name.lower(), t_name.upper(), t_name.replace(' ', ''), '__fallback__']:
-                if not cand: continue
+                if not cand:
+                    continue
                 if wv is None and cand in thr_w:
-                    try: wv = float(thr_w[cand])
-                    except Exception: wv = None
+                    try:
+                        wv = float(thr_w[cand])
+                    except Exception:
+                        wv = None
                 if ev is None and cand in thr_e:
-                    try: ev = float(thr_e[cand])
-                    except Exception: ev = None
-            if wv is None: wv = TEMP_WARN
-            if ev is None: ev = TEMP_ERR
+                    try:
+                        ev = float(thr_e[cand])
+                    except Exception:
+                        ev = None
+            if wv is None:
+                wv = TEMP_WARN
+            if ev is None:
+                ev = TEMP_ERR
             try:
                 tt = classify_numeric(t_val, wv, ev)[0]
             except Exception:
                 tt = '正常'
             tags_t.append(tt)
-        if not tags_t: tags_t = ['正常']
-        worst = lambda x: '错误' if '错误' in x else ('告警' if '告警' in x else '正常')
+        if not tags_t:
+            tags_t = ['正常']
+
+        def worst(x): return '错误' if '错误' in x else ('告警' if '告警' in x else '正常')
         worst_temp = worst(tags_t)
         if thr_w:
             try:
                 if '__fallback__' in thr_w:
-                    disp_tw = round(float(thr_w['__fallback__']),1)
+                    disp_tw = round(float(thr_w['__fallback__']), 1)
                 else:
-                    reals = [float(v) for v in thr_w.values() if isinstance(v,(int,float))]
+                    reals = [float(v) for v in thr_w.values() if isinstance(v, (int, float))]
                     disp_tw = round(min(reals), 1) if reals else TEMP_WARN
-            except Exception: disp_tw = TEMP_WARN
-        else: disp_tw = TEMP_WARN
+            except Exception:
+                disp_tw = TEMP_WARN
+        else:
+            disp_tw = TEMP_WARN
         if thr_e:
             try:
                 if '__fallback__' in thr_e:
-                    disp_te = round(float(thr_e['__fallback__']),1)
+                    disp_te = round(float(thr_e['__fallback__']), 1)
                 else:
-                    reals = [float(v) for v in thr_e.values() if isinstance(v,(int,float))]
+                    reals = [float(v) for v in thr_e.values() if isinstance(v, (int, float))]
                     disp_te = round(min(reals), 1) if reals else TEMP_ERR
-            except Exception: disp_te = TEMP_ERR
-        else: disp_te = TEMP_ERR
+            except Exception:
+                disp_te = TEMP_ERR
+        else:
+            disp_te = TEMP_ERR
         rows.append({
             '设备名称': d['name'], '管理IP': d['host'], '是否核心': '是' if d['is_core'] else '否',
             '登录状态': d['登录状态'], 'CPU利用率%': round(d['cpu_pct'], 2), 'CPU状态': tag_cpu,
@@ -1827,7 +2042,7 @@ def _health_header_rows(data):
             '温度状态': worst_temp,
             '温度告警阈值': f'{round(disp_tw,1)}C' if disp_tw else TEMP_WARN,
             '温度错误阈值': f'{round(disp_te,1)}C' if disp_te else TEMP_ERR,
-            'UP端口数': sum(1 for p in d['ports'] if (isinstance(p, dict) and str(p.get('链路状态','')).upper() in ('UP', 'U'))),
+            'UP端口数': sum(1 for p in d['ports'] if (isinstance(p, dict) and str(p.get('链路状态', '')).upper() in ('UP', 'U'))),
             '总物理端口数': len(d['ports']),
             '带宽采集方法': d.get('counters_method', ''),
             '采集时间': d['采集时间'],
@@ -1841,28 +2056,39 @@ def _port_rows(d):
     dev_warn, dev_err = d.get('温度告警阈值'), d.get('温度错误阈值')
     for p in d['ports']:
         up = p['链路状态'].upper() in ('UP', 'U')
-        in_u = float(p.get('入带宽利用率%', 0.0)); out_u = float(p.get('出带宽利用率%', 0.0))
+        in_u = float(p.get('入带宽利用率%', 0.0))
+        out_u = float(p.get('出带宽利用率%', 0.0))
         bw_max = max(in_u, out_u)
         bw_tag, _ = classify_numeric(bw_max, BANDWIDTH_WARN, BANDWIDTH_ERR) if up else ('未启用', bw_max)
         diag = p.get('光模块诊断') or {}
-        rx = diag.get('收光(dBm)'); tx = diag.get('发光(dBm)')
+        rx = diag.get('收光(dBm)')
+        tx = diag.get('发光(dBm)')
         rx_tag = '未采集'
         if rx is not None:
             if not (RX_PWR_MIN <= rx <= RX_PWR_MAX):
                 rx_tag = '告警' if (RX_PWR_MIN - 5 <= rx <= RX_PWR_MAX + 2) else '错误'
-            else: rx_tag = '正常'
+            else:
+                rx_tag = '正常'
         tx_tag = '未采集'
         if tx is not None:
-            tx_tag = '正常' if (TX_PWR_MIN <= tx <= TX_PWR_MAX) else ('告警' if (TX_PWR_MIN - 3 <= tx <= TX_PWR_MAX + 1) else '错误')
+            tx_tag = '正常' if (TX_PWR_MIN <= tx <= TX_PWR_MAX) else (
+                '告警' if (TX_PWR_MIN - 3 <= tx <= TX_PWR_MAX + 1) else '错误')
         anomalous = []
-        if up and bw_tag in ('告警', '错误'): anomalous.append(f'带宽{bw_tag}')
-        if rx_tag in ('告警', '错误'): anomalous.append(f'收光{rx_tag}')
-        if tx_tag in ('告警', '错误'): anomalous.append(f'发光{tx_tag}')
-        if p.get('入方向计数溢出') == '是': anomalous.append('入计数器溢出')
-        if p.get('出方向计数溢出') == '是': anomalous.append('出计数器溢出')
+        if up and bw_tag in ('告警', '错误'):
+            anomalous.append(f'带宽{bw_tag}')
+        if rx_tag in ('告警', '错误'):
+            anomalous.append(f'收光{rx_tag}')
+        if tx_tag in ('告警', '错误'):
+            anomalous.append(f'发光{tx_tag}')
+        if p.get('入方向计数溢出') == '是':
+            anomalous.append('入计数器溢出')
+        if p.get('出方向计数溢出') == '是':
+            anomalous.append('出计数器溢出')
         try:
-            if int(p.get('入方向错误包') or 0) > 0: anomalous.append('入方向错误包')
-            if int(p.get('出方向错误包') or 0) > 0: anomalous.append('出方向错误包')
+            if int(p.get('入方向错误包') or 0) > 0:
+                anomalous.append('入方向错误包')
+            if int(p.get('出方向错误包') or 0) > 0:
+                anomalous.append('出方向错误包')
         except Exception:
             pass
         # 光模块温度也判断
@@ -1871,18 +2097,23 @@ def _port_rows(d):
         if mod_temp is not None:
             try:
                 mod_t = float(mod_temp)
-                if dev_err and mod_t >= dev_err: mod_temp_tag = '错误'
-                elif dev_warn and mod_t >= dev_warn: mod_temp_tag = '告警'
-                elif mod_t >= TEMP_ERR: mod_temp_tag = '错误'
-                elif mod_t >= TEMP_WARN: mod_temp_tag = '告警'
-                if mod_temp_tag in ('告警','错误'): anomalous.append(f'光模块温度{mod_temp_tag}')
+                if dev_err and mod_t >= dev_err:
+                    mod_temp_tag = '错误'
+                elif dev_warn and mod_t >= dev_warn:
+                    mod_temp_tag = '告警'
+                elif mod_t >= TEMP_ERR:
+                    mod_temp_tag = '错误'
+                elif mod_t >= TEMP_WARN:
+                    mod_temp_tag = '告警'
+                if mod_temp_tag in ('告警', '错误'):
+                    anomalous.append(f'光模块温度{mod_temp_tag}')
             except Exception:
                 pass
         out.append({
             '设备名称': d['name'], '管理IP': d['host'], '端口': p['端口'], '链路状态': p['链路状态'],
-            '速率配置': p.get('速率配置',''), '双工': p.get('双工模式',''),
-            '接口类型': p.get('接口类型',''), 'PVID': p.get('PVID',''),
-            '描述': p.get('描述',''),
+            '速率配置': p.get('速率配置', ''), '双工': p.get('双工模式', ''),
+            '接口类型': p.get('接口类型', ''), 'PVID': p.get('PVID', ''),
+            '描述': p.get('描述', ''),
             '入带宽利用率%': round(in_u, 2),
             '出带宽利用率%': round(out_u, 2),
             '带宽状态': bw_tag,
@@ -1892,10 +2123,10 @@ def _port_rows(d):
             '光模块温度': mod_temp if mod_temp is not None else ('-'),
             '光模块电压(V)': diag.get('电压(V)') if diag.get('电压(V)') is not None else '-',
             '光模块电流(mA)': diag.get('电流(mA)') if diag.get('电流(mA)') is not None else '-',
-            '入方向错误包': p.get('入方向错误包',''),
-            '出方向错误包': p.get('出方向错误包',''),
-            '入方向计数溢出': p.get('入方向计数溢出',''),
-            '出方向计数溢出': p.get('出方向计数溢出',''),
+            '入方向错误包': p.get('入方向错误包', ''),
+            '出方向错误包': p.get('出方向错误包', ''),
+            '入方向计数溢出': p.get('入方向计数溢出', ''),
+            '出方向计数溢出': p.get('出方向计数溢出', ''),
             '异常标记': '; '.join(anomalous) if anomalous else ''
         })
     return out
@@ -1905,17 +2136,21 @@ def _anomaly_rows(data, port_rows):
     devs = []
     for d in data:
         reasons = []
-        if d['登录状态'] != '成功': reasons.append(f"登录失败:{d['登录状态']}")
+        if d['登录状态'] != '成功':
+            reasons.append(f"登录失败:{d['登录状态']}")
         tag = classify_numeric(d['cpu_pct'], CPU_WARN, CPU_ERR)[0]
-        if tag in ('告警', '错误'): reasons.append(f'CPU{tag}')
+        if tag in ('告警', '错误'):
+            reasons.append(f'CPU{tag}')
         tag = classify_numeric(d['mem_pct'], MEM_WARN, MEM_ERR)[0]
-        if tag in ('告警', '错误'): reasons.append(f'内存{tag}')
+        if tag in ('告警', '错误'):
+            reasons.append(f'内存{tag}')
         dev_warn, dev_err = d.get('温度告警阈值'), d.get('温度错误阈值')
         tw = dev_warn if dev_warn else TEMP_WARN
         te = dev_err if dev_err else TEMP_ERR
         for t in d['temps']:
             tag = classify_numeric(t[1], tw, te)[0]
-            if tag in ('告警', '错误'): reasons.append(f'温度传感器{t[0]}={t[1]}C-{tag}')
+            if tag in ('告警', '错误'):
+                reasons.append(f'温度传感器{t[0]}={t[1]}C-{tag}')
         if reasons:
             devs.append({'异常级别': '错误' if any('错误' in r for r in reasons) else '告警',
                          '对象类型': '设备', '对象标识': f"{d['name']}({d['host']})",
@@ -1936,7 +2171,9 @@ def _anomaly_rows(data, port_rows):
 def write_health(data):
     wb = Workbook()
     wb.remove(wb.active)
-    wb.create_sheet('设备健康概览'); wb.create_sheet('端口带宽与光功率'); wb.create_sheet('异常汇总')
+    wb.create_sheet('设备健康概览')
+    wb.create_sheet('端口带宽与光功率')
+    wb.create_sheet('异常汇总')
     overview_cols = ['序号', '设备名称', '管理IP', '是否核心', '登录状态', 'CPU利用率%', 'CPU状态', '内存利用率%',
                      '内存状态', '温度(最高传感器)', '温度状态', '温度告警阈值', '温度错误阈值',
                      'UP端口数', '总物理端口数', '带宽采集方法', '采集时间', '备注']
@@ -1945,12 +2182,15 @@ def write_health(data):
     for idx, r in enumerate(hrows, 1):
         for c, k in enumerate(overview_cols[1:], 2):
             cell = wb['设备健康概览'].cell(row=idx + 1, column=c, value=r.get(k, ''))
-            cell.border = BORDER; cell.alignment = Alignment(vertical='center', wrap_text=True)
+            cell.border = BORDER
+            cell.alignment = Alignment(vertical='center', wrap_text=True)
         wb['设备健康概览'].cell(row=idx + 1, column=1, value=idx).border = BORDER
         for col_key, cell_col in [('CPU状态', 7), ('内存状态', 9), ('温度状态', 11), ('登录状态', 5)]:
             c = wb['设备健康概览'].cell(row=idx + 1, column=cell_col)
             if col_key == '登录状态':
-                if str(c.value) != '成功': c.fill = ERR_FILL; continue
+                if str(c.value) != '成功':
+                    c.fill = ERR_FILL
+                    continue
             else:
                 _f(c, str(c.value))
     port_cols = ['设备名称', '管理IP', '端口', '链路状态', '速率配置', '双工', '接口类型', 'PVID', '描述',
@@ -1960,11 +2200,13 @@ def write_health(data):
                  '异常标记']
     _hs(wb, '端口带宽与光功率', port_cols)
     all_ports = []
-    for d in data: all_ports.extend(_port_rows(d))
+    for d in data:
+        all_ports.extend(_port_rows(d))
     for idx, r in enumerate(all_ports, 1):
         for c, k in enumerate(port_cols, 1):
             cell = wb['端口带宽与光功率'].cell(row=idx + 1, column=c, value=r.get(k, ''))
-            cell.border = BORDER; cell.alignment = Alignment(vertical='center', wrap_text=True)
+            cell.border = BORDER
+            cell.alignment = Alignment(vertical='center', wrap_text=True)
         for col_key, col_idx in [('带宽状态', 12), ('收光状态', 15), ('发光状态', 16)]:
             c = wb['端口带宽与光功率'].cell(row=idx + 1, column=col_idx)
             _f(c, str(c.value))
@@ -1978,9 +2220,12 @@ def write_health(data):
     for idx, r in enumerate(_anomaly_rows(data, all_ports), 1):
         for c, k in enumerate(anom_cols, 1):
             cell = wb['异常汇总'].cell(row=idx + 1, column=c, value=r.get(k, ''))
-            cell.border = BORDER; cell.alignment = Alignment(vertical='center', wrap_text=True)
-            if r.get('异常级别') == '错误': cell.fill = ERR_FILL
-            elif r.get('异常级别') == '告警': cell.fill = WARN_FILL
+            cell.border = BORDER
+            cell.alignment = Alignment(vertical='center', wrap_text=True)
+            if r.get('异常级别') == '错误':
+                cell.fill = ERR_FILL
+            elif r.get('异常级别') == '告警':
+                cell.fill = WARN_FILL
     wb.save(str(HEALTH_FILE))
     log(f'健康状态总表已输出: {HEALTH_FILE}')
 
@@ -1994,9 +2239,13 @@ def build_topo(data):
         hrows = _health_header_rows([d])[0]
         worst = '正常'
         for tag in [hrows['CPU状态'], hrows['内存状态'], hrows['温度状态']]:
-            if tag == '错误': worst = '错误'; break
-            if tag == '告警': worst = '告警'
-        if d['登录状态'] != '成功': worst = '错误'
+            if tag == '错误':
+                worst = '错误'
+                break
+            if tag == '告警':
+                worst = '告警'
+        if d['登录状态'] != '成功':
+            worst = '错误'
         device_health[d['name']] = worst
         color = {'正常': '#2E7D32', '告警': '#F57C00', '错误': '#C62828'}[worst]
         shape = 'box' if d['is_core'] else 'ellipse'
@@ -2015,14 +2264,19 @@ def build_topo(data):
             a = d['name']
             neigh = l['邻居系统名']
             b = neigh if neigh in names else (ips.get(neigh, neigh))
-            if a == b: continue
-            a_port = l['本地端口']; b_port = l['邻居端口']
+            if a == b:
+                continue
+            a_port = l['本地端口']
+            b_port = l['邻居端口']
             key = tuple(sorted([(a, a_port), (b, b_port)]))
-            if key in seen: continue
+            if key in seen:
+                continue
             seen.add(key)
             anomalous = False
             for p in d['ports']:
-                if p['端口'] == a_port and p.get('异常标记'): anomalous = True; break
+                if p['端口'] == a_port and p.get('异常标记'):
+                    anomalous = True
+                    break
             color = '#C62828' if anomalous else '#666666'
             edges.append({
                 'from': a, 'to': b,
@@ -2050,18 +2304,22 @@ def write_topo_html(nodes, edges, data_list):
     stat = defaultdict(int)
     for d in data_list:
         w = '正常'
-        if d['登录状态'] != '成功': w = '错误'
+        if d['登录状态'] != '成功':
+            w = '错误'
         else:
             hrows = _health_header_rows([d])[0]
-            if '错误' in [hrows['CPU状态'], hrows['内存状态'], hrows['温度状态']]: w = '错误'
-            elif '告警' in [hrows['CPU状态'], hrows['内存状态'], hrows['温度状态']]: w = '告警'
+            if '错误' in [hrows['CPU状态'], hrows['内存状态'], hrows['温度状态']]:
+                w = '错误'
+            elif '告警' in [hrows['CPU状态'], hrows['内存状态'], hrows['温度状态']]:
+                w = '告警'
         stat[w] += 1
     summary_html = f"<div class='summary'><b>统计概览</b>：总设备 {len(data_list)}；正常 {stat['正常']}，告警 {stat['告警']}，错误 {stat['错误']}，未采集到LLDP链路的设备以孤立节点显示。{'【离线模式】' if have_local else ''}</div>"
     vis_load_scripts = []
     if have_local:
         vis_load_scripts.append('<script type="text/javascript" src="_static/vis-network.min.js"></script>')
     else:
-        vis_load_scripts.append('<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vis-network@9.1.6/standalone/umd/vis-network.min.js" onerror="var s=document.createElement(\'script\');s.src=\'https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js\';s.onerror=function(){var s2=document.createElement(\'script\');s2.src=\'https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/vis-network.min.js\';document.body.appendChild(s2);};document.body.appendChild(s);"></script>')
+        vis_load_scripts.append(
+            '<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vis-network@9.1.6/standalone/umd/vis-network.min.js" onerror="var s=document.createElement(\'script\');s.src=\'https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js\';s.onerror=function(){var s2=document.createElement(\'script\');s2.src=\'https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/vis-network.min.js\';document.body.appendChild(s2);};document.body.appendChild(s);"></script>')
     load_err_block = """
 <div id="visErr" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;align-items:center;justify-content:center;">
   <div style="background:#fff;padding:24px 28px;max-width:560px;border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.25);">
@@ -2159,12 +2417,14 @@ def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     if RUN_LOG.exists():
-        try: RUN_LOG.unlink()
-        except Exception: pass
+        try:
+            RUN_LOG.unlink()
+        except Exception:
+            pass
     log('===== 华三交换机配置采集 + 健康检查 + 拓扑图 启动 =====')
 
     parser = _argparse.ArgumentParser(description='华三交换机配置+健康+拓扑采集工具', formatter_class=_argparse.RawTextHelpFormatter,
-        epilog="""示例：
+                                      epilog="""示例：
   1) 默认跑 switch_table.xlsx 全部设备：
      python h3c_switch_health_topology.py
   2) 只跑 172.17.115.80 这台（按 IP）：
@@ -2210,23 +2470,29 @@ def main():
         if args.ip:
             ips = {x.strip() for x in args.ip.split(',') if x.strip()}
             for i, d in enumerate(devices_all):
-                if d['host'] in ips: keep[i] = True
+                if d['host'] in ips:
+                    keep[i] = True
         if args.name:
             names = [x.strip() for x in args.name.split(',') if x.strip()]
             for i, d in enumerate(devices_all):
-                if keep[i]: continue
+                if keep[i]:
+                    continue
                 for pat in names:
-                    if not pat: continue
+                    if not pat:
+                        continue
                     if pat == d['name'] or pat in d['name']:
-                        keep[i] = True; break
+                        keep[i] = True
+                        break
         if args.row:
             try:
                 rows = {int(x.strip()) for x in args.row.split(',') if x.strip()}
             except Exception:
                 rows = set()
             for i, d in enumerate(devices_all):
-                if keep[i]: continue
-                if (d.get('_row_index') or (i + 1)) in rows: keep[i] = True
+                if keep[i]:
+                    continue
+                if (d.get('_row_index') or (i + 1)) in rows:
+                    keep[i] = True
         devices = [d for d, flag in zip(devices_all, keep) if flag]
         if not devices:
             log(f'[错误] 按过滤条件（ip={args.ip!r} name={args.name!r} row={args.row!r}）没有匹配到任何设备，请检查 switch_table.xlsx 内容。')
@@ -2272,27 +2538,28 @@ def main():
         merged = []
         order_hosts = list(dict.fromkeys([d['host'] for d in devices_all] + list(existing_by_host.keys())))
         for h in order_hosts:
-            if h not in existing_by_host: continue
+            if h not in existing_by_host:
+                continue
             item = existing_by_host[h]
             if not isinstance(item, dict):
                 try:
                     item = dict(item)
                 except Exception:
                     continue
-            for k, v in {'name': item.get('name',''), 'host': item.get('host',''), 'is_core': item.get('is_core',False),
-                         '采集时间': item.get('采集时间',''), '登录状态': item.get('登录状态','失败'), 'version_info': item.get('version_info',{}) if isinstance(item.get('version_info',{}), dict) else {},
-                         'config_txt': item.get('config_txt',''), 'cpu_pct': float(item.get('cpu_pct',0.0) or 0.0),
-                         'mem_pct': float(item.get('mem_pct',0.0) or 0.0), 'mem_used': float(item.get('mem_used',0.0) or 0.0),
-                         'mem_total': float(item.get('mem_total',0.0) or 0.0),
-                         'temps': item.get('temps',[]) if isinstance(item.get('temps',[]), list) else [],
-                         'ports': item.get('ports',[]) if isinstance(item.get('ports',[]), list) else [],
-                         'lldp': item.get('lldp',[]) if isinstance(item.get('lldp',[]), list) else [],
-                         'errors': item.get('errors',[]) if isinstance(item.get('errors',[]), list) else [],
-                         'counters_method': item.get('counters_method','') or '',
-                         'counters_sample_sec': int(item.get('counters_sample_sec',30) or 30),
+            for k, v in {'name': item.get('name', ''), 'host': item.get('host', ''), 'is_core': item.get('is_core', False),
+                         '采集时间': item.get('采集时间', ''), '登录状态': item.get('登录状态', '失败'), 'version_info': item.get('version_info', {}) if isinstance(item.get('version_info', {}), dict) else {},
+                         'config_txt': item.get('config_txt', ''), 'cpu_pct': float(item.get('cpu_pct', 0.0) or 0.0),
+                         'mem_pct': float(item.get('mem_pct', 0.0) or 0.0), 'mem_used': float(item.get('mem_used', 0.0) or 0.0),
+                         'mem_total': float(item.get('mem_total', 0.0) or 0.0),
+                         'temps': item.get('temps', []) if isinstance(item.get('temps', []), list) else [],
+                         'ports': item.get('ports', []) if isinstance(item.get('ports', []), list) else [],
+                         'lldp': item.get('lldp', []) if isinstance(item.get('lldp', []), list) else [],
+                         'errors': item.get('errors', []) if isinstance(item.get('errors', []), list) else [],
+                         'counters_method': item.get('counters_method', '') or '',
+                         'counters_sample_sec': int(item.get('counters_sample_sec', 30) or 30),
                          '温度告警阈值': item.get('温度告警阈值') if isinstance(item.get('温度告警阈值'), dict) else {},
                          '温度错误阈值': item.get('温度错误阈值') if isinstance(item.get('温度错误阈值'), dict) else {},
-                         '备注': item.get('备注','')}.items():
+                         '备注': item.get('备注', '')}.items():
                 item.setdefault(k, v)
             merged.append(item)
         all_data = merged
@@ -2324,7 +2591,7 @@ def main():
         write_switch_table_check_flag(all_data)
     except Exception as e:
         log(f'[WARN] 回写"是否需要检查"列出错（通常是 Excel 被打开，关闭即可）：{e}')
-    total_ok = sum(1 for d in all_data if isinstance(d, dict) and (d.get('登录状态','') == '成功'))
+    total_ok = sum(1 for d in all_data if isinstance(d, dict) and (d.get('登录状态', '') == '成功'))
     log(f'===== 全部完成：成功采集 {total_ok}/{len(all_data)} 台 =====')
     log(f'台账: {LEDGER_FILE}')
     log(f'健康: {HEALTH_FILE}')
@@ -2337,7 +2604,8 @@ def main():
 
 
 if __name__ == '__main__':
-    try: main()
+    try:
+        main()
     except Exception as e:
         log(f'[FATAL] {e}\n{traceback.format_exc()}')
         sys.exit(2)

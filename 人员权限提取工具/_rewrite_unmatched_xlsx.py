@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 import pandas as pd
 ROOT = os.path.abspath(os.path.dirname(__file__))
 OUT = os.path.join(ROOT, '在职人员权限提取结果.xlsx')
@@ -6,9 +7,12 @@ TARGET = os.path.join(ROOT, '在职人员-未匹配权限表.xlsx')
 sheet1 = '未匹配-错误'
 sheet2 = '需要补权限的人员'
 xl = pd.ExcelFile(OUT, engine='openpyxl')
-df_um = pd.read_excel(OUT, sheet_name='未匹配人员', engine='openpyxl', dtype=str) if '未匹配人员' in xl.sheet_names else pd.DataFrame()
-df_err = pd.read_excel(OUT, sheet_name='权限读取错误', engine='openpyxl', dtype=str) if '权限读取错误' in xl.sheet_names else pd.DataFrame()
-summary = pd.read_excel(OUT, sheet_name='人员权限汇总', engine='openpyxl', dtype=str) if '人员权限汇总' in xl.sheet_names else pd.DataFrame()
+df_um = pd.read_excel(OUT, sheet_name='未匹配人员', engine='openpyxl',
+                      dtype=str) if '未匹配人员' in xl.sheet_names else pd.DataFrame()
+df_err = pd.read_excel(OUT, sheet_name='权限读取错误', engine='openpyxl',
+                       dtype=str) if '权限读取错误' in xl.sheet_names else pd.DataFrame()
+summary = pd.read_excel(OUT, sheet_name='人员权限汇总', engine='openpyxl',
+                        dtype=str) if '人员权限汇总' in xl.sheet_names else pd.DataFrame()
 if os.path.isfile(TARGET):
     try:
         os.remove(TARGET)

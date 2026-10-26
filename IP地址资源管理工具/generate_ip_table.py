@@ -30,28 +30,29 @@ def parse_ip(ip_str):
     except:
         return None
 
+
 def main():
     print("读取端口数据.xlsx...")
-    
+
     xl = pd.ExcelFile(resolve_port_data())
     df_terminals = pd.read_excel(xl, sheet_name='正常数据')
-    
+
     # 收集所有IP
     ip_info = {}
     for idx, row in df_terminals.iterrows():
         ip = str(row['IP地址']).strip()
         if pd.isna(row['IP地址']) or ip == '' or ip == 'nan':
             continue
-        
+
         ip_parts = parse_ip(ip)
         if ip_parts:
             ip_info[ip] = {
                 '设备名称': str(row['设备名称']) if pd.notna(row['设备名称']) else '',
                 '备注': str(row['备注']) if pd.notna(row['备注']) else ''
             }
-    
+
     print(f"共收集到 {len(ip_info)} 个IP地址")
-    
+
     # 按网段分组
     networks = defaultdict(list)
     for ip in ip_info:
@@ -59,10 +60,10 @@ def main():
         if parts:
             network = f"{parts[0]}.{parts[1]}.{parts[2]}.0"
             networks[network].append((parts[3], ip, ip_info[ip]))
-    
+
     # 生成结果
     result_data = []
-    
+
     network_list = sorted(networks.keys())
 
     # 添加两个空网段（172.17.115.0 和 172.17.116.0）
@@ -75,11 +76,11 @@ def main():
     for network in network_list:
         # 对每个网段，生成1-254的IP
         ips_in_network = {t[0]: t for t in networks[network]}
-        
+
         for i in range(1, 255):
             ip = f"{network.rsplit('.', 1)[0]}.{i}"
             is_used = i in ips_in_network
-            
+
             if is_used:
                 _, full_ip, info = ips_in_network[i]
                 device_name = info['设备名称']
@@ -87,7 +88,7 @@ def main():
             else:
                 device_name = ''
                 remark = ''
-            
+
             result_data.append({
                 '网段': network,
                 'IP地址': ip,
@@ -95,35 +96,35 @@ def main():
                 '设备名称': device_name,
                 '备注': remark
             })
-    
+
     # 创建DataFrame
     result_df = pd.DataFrame(result_data)
-    
+
     # 保存为Excel
     output_file = os.path.join(ROOT, 'IP地址资源管理表.xlsx')
-    
+
     from openpyxl import load_workbook
     from openpyxl.styles import PatternFill, Font
     from openpyxl.formatting.rule import CellIsRule, FormulaRule
     from openpyxl.chart import BarChart, Reference, PieChart
-    
+
     # 先保存数据，用两个sheet
     with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
         result_df.to_excel(writer, sheet_name='IP资源表', index=False)
         # 初始保存一个空的统计图表
         pd.DataFrame(columns=['网段', '已用', '空闲', '总数', '使用率']).to_excel(writer, sheet_name='统计图表', index=False)
-    
+
     # 加载工作簿
     wb = load_workbook(output_file)
-    
+
     # --- 处理IP资源表 sheet
     ws_ip = wb['IP资源表']
-    
+
     # 定义颜色
     green_fill = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')
     red_fill = PatternFill(start_color='FFC7CE', end_color='FFC7CE', fill_type='solid')
     yellow_fill = PatternFill(start_color='FFEB9C', end_color='FFEB9C', fill_type='solid')
-    
+
     # 给表头添加颜色和加粗字体
     header_font = Font(bold=True, color='000000')
     for col in range(1, ws_ip.max_column + 1):
@@ -146,7 +147,7 @@ def main():
         f"A2:E{ws_ip.max_row}",
         FormulaRule(formula=[f'D$2=""'], fill=red_fill, stopIfTrue=True)
     )
-    
+
     # 调整IP资源表的列宽
     for col in ws_ip.columns:
         max_length = 0
@@ -160,29 +161,29 @@ def main():
                 pass
         adjusted_width = min(max_length + 2, 50)
         ws_ip.column_dimensions[column].width = adjusted_width
-    
+
     ws_ip.freeze_panes = "A2"
-    
+
     # --- 处理统计图表 sheet
     ws_stats = wb['统计图表']
-    
+
     # 写入表头
     headers = ['网段', '已用', '空闲', '总数', '使用率']
     for col_num, header in enumerate(headers, start=1):
         ws_stats.cell(row=1, column=col_num).value = header
-    
+
     # 给统计图表的表头也设置格式
     for col in range(1, ws_stats.max_column + 1):
         cell = ws_stats.cell(row=1, column=col)
         cell.fill = yellow_fill
         cell.font = header_font
-    
+
     # 写入各网段数据，并添加公式
     row_num = 2
     for network in network_list:
         ws_stats.cell(row=row_num, column=1).value = network
         ws_stats.cell(row=row_num, column=4).value = 254
-        
+
         # 找到该网段在IP资源表中的起始和结束行
         start_row = None
         end_row = None
@@ -191,16 +192,18 @@ def main():
                 if start_row is None:
                     start_row = r
                 end_row = r
-        
+
         if start_row and end_row:
             # 添加公式
-            ws_stats.cell(row=row_num, column=2).value = f'=COUNTIFS(\'IP资源表\'!A{start_row}:A{end_row}, A{row_num}, \'IP资源表\'!C{start_row}:C{end_row}, "已用")'
-            ws_stats.cell(row=row_num, column=3).value = f'=COUNTIFS(\'IP资源表\'!A{start_row}:A{end_row}, A{row_num}, \'IP资源表\'!C{start_row}:C{end_row}, "空闲")'
+            ws_stats.cell(
+                row=row_num, column=2).value = f'=COUNTIFS(\'IP资源表\'!A{start_row}:A{end_row}, A{row_num}, \'IP资源表\'!C{start_row}:C{end_row}, "已用")'
+            ws_stats.cell(
+                row=row_num, column=3).value = f'=COUNTIFS(\'IP资源表\'!A{start_row}:A{end_row}, A{row_num}, \'IP资源表\'!C{start_row}:C{end_row}, "空闲")'
             ws_stats.cell(row=row_num, column=5).value = f'=B{row_num}/D{row_num}'
             ws_stats.cell(row=row_num, column=5).number_format = '0.0%'
-        
+
         row_num += 1
-    
+
     # 添加总体统计
     ws_stats.cell(row=row_num, column=1).value = "总体统计"
     ws_stats.cell(row=row_num, column=2).value = f'=SUM(B2:B{row_num-1})'
@@ -208,7 +211,7 @@ def main():
     ws_stats.cell(row=row_num, column=4).value = f'=SUM(D2:D{row_num-1})'
     ws_stats.cell(row=row_num, column=5).value = f'=B{row_num}/D{row_num}'
     ws_stats.cell(row=row_num, column=5).number_format = '0.0%'
-    
+
     # 调整统计图表表的列宽
     for col in ws_stats.columns:
         max_length = 0
@@ -222,7 +225,7 @@ def main():
                 pass
         adjusted_width = min(max_length + 2, 20)
         ws_stats.column_dimensions[column].width = adjusted_width
-    
+
     # 添加柱状图 - 各网段IP使用情况
     bar_chart = BarChart()
     bar_chart.type = 'col'
@@ -230,34 +233,34 @@ def main():
     bar_chart.title = '各网段IP地址使用情况'
     bar_chart.x_axis.title = '网段'
     bar_chart.y_axis.title = '数量'
-    
+
     data = Reference(ws_stats, min_col=2, min_row=1, max_col=3, max_row=row_num-1)
     cats = Reference(ws_stats, min_col=1, min_row=2, max_row=row_num-1)
     bar_chart.add_data(data, titles_from_data=True)
     bar_chart.set_categories(cats)
     ws_stats.add_chart(bar_chart, "G2")
-    
+
     # 添加饼图 - 总体IP使用情况
     pie_chart = PieChart()
     pie_chart.title = "总体IP使用情况"
-    
+
     # 创建饼图数据
     ws_stats['K1'] = '总体统计'
     ws_stats['K2'] = '已用'
     ws_stats['K3'] = '空闲'
     ws_stats['L2'] = f'=B{row_num}'
     ws_stats['L3'] = f'=C{row_num}'
-    
+
     pie_data = Reference(ws_stats, min_col=12, min_row=1, max_row=3)
     pie_cats = Reference(ws_stats, min_col=11, min_row=2, max_row=3)
     pie_chart.add_data(pie_data, titles_from_data=True)
     pie_chart.set_categories(pie_cats)
-    
+
     ws_stats.add_chart(pie_chart, "G20")
-    
+
     # 保存
     wb.save(output_file)
-    
+
     print(f"\n完成！IP地址资源管理表已保存至: {output_file}")
     print(f"共处理 {len(result_df)} 个IP地址")
     print(f"\n包含两个工作表:")
@@ -267,6 +270,7 @@ def main():
     print("1. 在'IP资源表'中，把'空闲'改为'已用'，颜色会自动变化")
     print("2. 改完后，'统计图表'表里的数字会自动更新！")
     print("3. 图表也会自动跟着更新！")
+
 
 if __name__ == "__main__":
     main()

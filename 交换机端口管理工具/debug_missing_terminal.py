@@ -1,4 +1,8 @@
-import sys, os, re, time, json
+import sys
+import os
+import re
+import time
+import json
 from collections import defaultdict
 import pandas as pd
 from netmiko import ConnectHandler
@@ -8,6 +12,7 @@ try:
 except Exception:
     sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
     from net_port_tool import config as np_config
+
 
 def main():
     print("=" * 70)
@@ -41,6 +46,7 @@ def main():
         print(f"[WARN] 没找到名字含 {access_sw_pattern} 的接入交换机，跳过接入侧诊断")
 
     lines = []
+
     def P(s=''):
         print(s)
         lines.append(str(s))
@@ -126,7 +132,8 @@ def main():
                 P(mac_vlan[:8000])
 
                 # 提取该VLAN下所有MAC，逐个查对应端口 + IP
-                local_macs = sorted({m.group(1) for m in re.finditer(r'([0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4})', mac_vlan.lower())})
+                local_macs = sorted({m.group(1) for m in re.finditer(
+                    r'([0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4})', mac_vlan.lower())})
                 P(f"[INFO] 在接入交换机 VLAN{target_vlan} 学到的MAC数: {len(local_macs)}")
                 P(f"[INFO] 前10个: {local_macs[:10]}")
                 for mac in list(mac_candidates) + local_macs[:20]:
@@ -161,7 +168,8 @@ def main():
                 P(f"\n[OK] 上一次运行输出 {out_xlsx} 存在，sheets = {xl.sheet_names}")
                 if '终端接入表' in xl.sheet_names:
                     df = pd.read_excel(out_xlsx, sheet_name='终端接入表', dtype=str)
-                    hit = df[df.apply(lambda r: target_ip in ' '.join(str(v) for v in r.values) or (target_vlan and target_vlan in str(r.get('VLAN', ''))), axis=1)]
+                    hit = df[df.apply(lambda r: target_ip in ' '.join(str(v) for v in r.values)
+                                      or (target_vlan and target_vlan in str(r.get('VLAN', ''))), axis=1)]
                     P(f"终端接入表总行数 = {len(df)}")
                     P(f"命中IP={target_ip} 或 VLAN={target_vlan} 的行数 = {len(hit)}")
                     if len(hit) > 0:
@@ -183,6 +191,7 @@ def main():
         f.write('\n'.join(lines))
     P(f"\n[DONE] 诊断日志已保存: {log_path}")
     return 0
+
 
 if __name__ == '__main__':
     sys.exit(main())

@@ -546,7 +546,7 @@ def filter_access_terminals(df: Optional[pd.DataFrame], core_name: str = ''):
             row = data.loc[idx].to_dict()
             row['异常类型'] = 'IP/MAC重复（聚合/级联口穿透）'
             row['原因'] = (f'同一IP/MAC({ip} / {mac})同时出现在接入口和聚合/虚拟口 {ports} 中，'
-                           f'聚合/级联口那条不是终端真正直连接口，属于“透传数据”')
+                         f'聚合/级联口那条不是终端真正直连接口，属于“透传数据”')
             row['处理建议'] = '丢弃（保留物理接入口那条记录）'
             anomaly_rows.append(row)
 
@@ -562,9 +562,9 @@ def filter_access_terminals(df: Optional[pd.DataFrame], core_name: str = ''):
             continue
         r['异常类型'] = '端口为聚合/虚拟口（非终端直连物理口）'
         r['原因'] = (f"终端所在端口 {r['所在端口']} 是聚合口(BAGG/AGG等)或虚拟口，属于级联/透传，"
-                     f'不应出现在“终端接入表(接入口-终端一一对应)”中')
+                   f'不应出现在“终端接入表(接入口-终端一一对应)”中')
         r['处理建议'] = ('丢弃（如需保留，请确认该端口是否真的直连终端；若下面接了傻瓜交换机/多级级联，'
-                         f'请在端口使用表中作为级联口标注）')
+                     f'请在端口使用表中作为级联口标注）')
         anomaly_rows.append(r)
 
     # (3) 同一物理口挂多终端
@@ -576,7 +576,7 @@ def filter_access_terminals(df: Optional[pd.DataFrame], core_name: str = ''):
             r = data.loc[idx].to_dict()
             r['异常类型'] = '同一物理口挂多终端（傻瓜交换机/多MAC设备）'
             r['原因'] = (f'交换机 {sw} 端口 {pt} 下检测到 {len(g)} 个终端(IP/MAC组合)，'
-                         f'物理口一般只接一个终端，多终端通常是下面接了傻瓜交换机/摄像机/多网口服务器等')
+                       f'物理口一般只接一个终端，多终端通常是下面接了傻瓜交换机/摄像机/多网口服务器等')
             r['处理建议'] = '保留在终端接入表；若数量明显异常(>10)，需人工确认是不是级联口漏标'
             anomaly_rows.append(r)
 

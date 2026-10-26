@@ -43,41 +43,41 @@ ACCESS_SWITCHES = [
     #     'username': 'admin',
     #     'password': 'Inventec@123',
     # },
-#     {
-#         'name': 'SW-SBX05-SA-SWITCH-01',
-#         'device_type': 'hp_comware',
-#         'host': '172.17.115.36',
-#         'username': 'admin',
-#         'password': 'Inventec@123',
-#     },
-#     {
-#         'name': 'SW-SBX06-SA-SWITCH-01',
-#         'device_type': 'hp_comware',
-#         'host': '172.17.115.37',
-#         'username': 'admin',
-#         'password': 'Inventec@123',
-#     },
-#     {
-#         'name': 'SW-RDG01-SA-SWITCH-01',
-#         'device_type': 'hp_comware',
-#         'host': '172.17.115.38',
-#         'username': 'admin',
-#         'password': 'Inventec@123',
-#     },
-#     {
-#         'name': 'SW-RDG01-SA-SWITCH-02',
-#         'device_type': 'hp_comware',
-#         'host': '172.17.115.39',
-#         'username': 'admin',
-#         'password': 'Inventec@123',
-#     },
-#     {
-#         'name': 'SSW-RDG02-SA-SWITCH-01',
-#         'device_type': 'hp_comware',
-#         'host': '172.17.115.40',
-#         'username': 'admin',
-#         'password': 'Inventec@123',
-#     },
+    #     {
+    #         'name': 'SW-SBX05-SA-SWITCH-01',
+    #         'device_type': 'hp_comware',
+    #         'host': '172.17.115.36',
+    #         'username': 'admin',
+    #         'password': 'Inventec@123',
+    #     },
+    #     {
+    #         'name': 'SW-SBX06-SA-SWITCH-01',
+    #         'device_type': 'hp_comware',
+    #         'host': '172.17.115.37',
+    #         'username': 'admin',
+    #         'password': 'Inventec@123',
+    #     },
+    #     {
+    #         'name': 'SW-RDG01-SA-SWITCH-01',
+    #         'device_type': 'hp_comware',
+    #         'host': '172.17.115.38',
+    #         'username': 'admin',
+    #         'password': 'Inventec@123',
+    #     },
+    #     {
+    #         'name': 'SW-RDG01-SA-SWITCH-02',
+    #         'device_type': 'hp_comware',
+    #         'host': '172.17.115.39',
+    #         'username': 'admin',
+    #         'password': 'Inventec@123',
+    #     },
+    #     {
+    #         'name': 'SSW-RDG02-SA-SWITCH-01',
+    #         'device_type': 'hp_comware',
+    #         'host': '172.17.115.40',
+    #         'username': 'admin',
+    #         'password': 'Inventec@123',
+    #     },
 ]
 
 # ==========================================
@@ -135,11 +135,14 @@ def get_switch_total_ports(ssh_conn):
             # 获取最大端口序号
             port_indices = [int(p[1]) for p in ports]
             max_idx = max(port_indices)
-            
+
             # 根据华三常规规格归位
-            if max_idx <= 10: return 8
-            if max_idx <= 28: return 24
-            if max_idx <= 52: return 48
+            if max_idx <= 10:
+                return 8
+            if max_idx <= 28:
+                return 24
+            if max_idx <= 52:
+                return 48
             return max_idx
     except Exception:
         pass
@@ -151,14 +154,14 @@ def find_port_on_access_sw(access_sw_config, mac):
     try:
         # 获取配置中指定的端口数，如果没有则设为 None 触发自动探测
         specified_ports = access_sw_config.get('total_ports')
-        
+
         # 为了 ConnectHandler，排除自定义键
         conn_params = {k: v for k, v in access_sw_config.items() if k not in ['name', 'total_ports']}
-        
+
         with ConnectHandler(**conn_params) as ssh:
             # 如果没指定端口数，进行自动探测
             total_ports = specified_ports if specified_ports else get_switch_total_ports(ssh)
-            
+
             # 华三命令：display mac-address <mac>
             output = ssh.send_command(f"display mac-address {mac}")
             lines = output.splitlines()
@@ -179,7 +182,7 @@ def find_port_on_access_sw(access_sw_config, mac):
                                     continue
                                 port = p
                                 break
-                        
+
                         if port != "Unknown":
                             # --- 增强过滤逻辑 ---
                             # 1. 检查端口序号是否超过该交换机的接入规格
@@ -189,15 +192,15 @@ def find_port_on_access_sw(access_sw_config, mac):
                                 if port_idx > total_ports:
                                     # print(f"  [跳过] 端口 {port} 为上行口 (超过接入规格 {total_ports})")
                                     return None, None
-                            
+
                             # 2. 检查该端口下的 MAC 密度
                             mac_count_out = ssh.send_command(f"display mac-address interface {port}")
                             mac_count = len(re.findall(r'[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}', mac_count_out.lower()))
-                            
+
                             if mac_count > 3:
                                 # 接入端口通常只会有 1-2 个 MAC (PC/电话)
                                 return None, None
-                                
+
                             return port, vlan
     except Exception as e:
         print(f"  连接交换机 {access_sw_config.get('host')} 失败: {e}")
@@ -210,10 +213,10 @@ def get_all_up_ports_with_mac(access_sw_config):
     try:
         specified_ports = access_sw_config.get('total_ports')
         conn_params = {k: v for k, v in access_sw_config.items() if k not in ['name', 'total_ports']}
-        
+
         with ConnectHandler(**conn_params) as ssh:
             total_ports = specified_ports if specified_ports else get_switch_total_ports(ssh)
-            
+
             output_brief = ssh.send_command("display interface brief")
             up_ports = []
             for line in output_brief.splitlines():
@@ -221,7 +224,7 @@ def get_all_up_ports_with_mac(access_sw_config):
                     parts = line.split()
                     port_name = parts[0]
                     p_up = port_name.upper()
-                    
+
                     # 基本过滤：排除逻辑口
                     if any(x in p_up for x in ['GE', 'XGE', 'ETH', 'TEN-G']) and not any(x in p_up for x in ['BAGG', 'RAGG', 'NULL', 'VLAN']):
                         # 规格过滤：排除上行序号
@@ -253,7 +256,7 @@ def get_all_up_ports_with_mac(access_sw_config):
                 # 再次校验 MAC 密度
                 if len(macs) > 5:
                     continue
-                    
+
                 results.append({
                     'port': port,
                     'macs': macs
@@ -271,10 +274,10 @@ def main():
         # 确保表格中有对应的 IP 列
         possible_ip_cols = ['*IP/域名', 'IP地址', 'IP/域名', 'IP']
         ip_column = next((col for col in possible_ip_cols if col in df.columns), None)
-        
+
         # 设备名称列名处理
         name_column = '*设备名称' if '*设备名称' in df.columns else '设备名称'
-        
+
         if not ip_column:
             print(f"Excel 中未找到 IP 列，当前列名: {df.columns.tolist()}")
             return
@@ -285,7 +288,7 @@ def main():
     # 准备结果列表
     results_data = []
     # 用于记录哪些端口已被 Excel 中的设备占用
-    occupied_ports = {} # { sw_name: {port_name} }
+    occupied_ports = {}  # { sw_name: {port_name} }
 
     print(f"--- 开始自动化网络探测 (共 {len(df)} 条记录) ---")
     try:
@@ -328,7 +331,7 @@ def main():
                             found_info['交换机'] = sw_config['name']
                             found_info['端口'] = port
                             found_info['VLAN'] = vlan
-                            
+
                             # 记录占用
                             if sw_config['name'] not in occupied_ports:
                                 occupied_ports[sw_config['name']] = set()
@@ -346,9 +349,9 @@ def main():
                 print(f"  扫描交换机: {sw_name} ...")
                 conn_params = {k: v for k, v in sw_config.items() if k != 'name'}
                 up_ports_info = get_all_up_ports_with_mac(conn_params)
-                
+
                 sw_occupied = occupied_ports.get(sw_name, set())
-                
+
                 for item in up_ports_info:
                     port = item['port']
                     # 如果该端口没在之前的 Excel 匹配中出现过
@@ -383,7 +386,7 @@ def main():
 
     # 保存结果到新 Excel
     new_df = pd.DataFrame(results_data)
-    
+
     # --- 新增功能：结果排序 ---
     def sort_key(row):
         sw = str(row['交换机'])

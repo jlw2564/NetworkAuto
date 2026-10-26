@@ -136,6 +136,7 @@ def _read_xls_with_xlrd(perm_file_path: str) -> List[Tuple[str, pd.DataFrame]]:
             continue
 
         scan_end = min(15, len(rows))
+
         def nonempty_count(row):
             return sum(1 for x in row if str(x).strip() not in ('', 'nan', 'None'))
         header_idx = max(range(scan_end), key=lambda i: nonempty_count(rows[i])) if scan_end else 0
@@ -145,6 +146,7 @@ def _read_xls_with_xlrd(perm_file_path: str) -> List[Tuple[str, pd.DataFrame]]:
         data_rows = rows[header_idx + 1:]
 
         ncols = max(len(header_row), max((len(r) for r in data_rows), default=0))
+
         def pad(r):
             if len(r) < ncols:
                 return list(r) + [''] * (ncols - len(r))
@@ -321,8 +323,10 @@ def main():
     parser.add_argument('--perm-dir', default=DEFAULT_PERM_DIR, help=f'权限表目录（默认: {DEFAULT_PERM_DIR}）')
     parser.add_argument('--output', default=DEFAULT_OUTPUT_FILE, help=f'汇总权限输出文件（默认: {DEFAULT_OUTPUT_FILE}）')
     parser.add_argument('--unmatched', default=DEFAULT_UNMATCHED_FILE, help=f'未匹配人员输出（默认: {DEFAULT_UNMATCHED_FILE}）')
-    parser.add_argument('--matched-perm-dir', default=DEFAULT_MATCHED_PERM_DIR, help=f'匹配上的权限表拷贝到这个文件夹（默认: {DEFAULT_MATCHED_PERM_DIR}）')
-    parser.add_argument('--unmatched-perm-dir', default=DEFAULT_UNMATCHED_PERM_DIR, help=f'未被任何在职人员匹配到的权限表单独存到这个文件夹（默认: {DEFAULT_UNMATCHED_PERM_DIR}）')
+    parser.add_argument('--matched-perm-dir', default=DEFAULT_MATCHED_PERM_DIR,
+                        help=f'匹配上的权限表拷贝到这个文件夹（默认: {DEFAULT_MATCHED_PERM_DIR}）')
+    parser.add_argument('--unmatched-perm-dir', default=DEFAULT_UNMATCHED_PERM_DIR,
+                        help=f'未被任何在职人员匹配到的权限表单独存到这个文件夹（默认: {DEFAULT_UNMATCHED_PERM_DIR}）')
     args = parser.parse_args()
 
     print('\n' + '=' * 70)
